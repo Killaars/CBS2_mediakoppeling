@@ -11,14 +11,28 @@ path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
 #%%
 
 parents = pd.read_csv(str(path / 'related_parents.csv'),index_col=0)
-parents['publish_date_date'] = pd.to_datetime(parents['publish_date_date'])
-
 children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
 
 #%% 
 # Variables
 upwindow = 7
 lowwindow = 2
+
+'''
+Preprocessing fuction for both the children as the parents
+'''
+def preprocessing(parents,children):
+    # Parents
+    parents.loc[:,'publish_date_date'] = pd.to_datetime(parents.loc[:,'publish_date_date'])
+    parents.loc[:,'title'] = parents.loc[:,'title'].str.lower()
+    parents.loc[:,'content'] = parents.loc[:,'content'].str.lower()
+    
+    # Children
+    children.loc[:,'title'] = children.loc[:,'title'].str.lower()
+    children.loc[:,'content'] = children.loc[:,'content'].str.lower()
+    
+    return parents, children
+    
 
 '''
 # Function to check if there is a link to the CBS site
@@ -84,9 +98,6 @@ def check_title(row):
     
     for index in parents_to_test.index:
         if parents_to_test.loc[index,'title'] in row['content']:
- #       if "jaar verdronken" in row['content']:
-            print(index)
-            print(parents_to_test.loc[index,'id'])
             matches_to_return.append(parents_to_test.loc[index,'id'])
     return matches_to_return
     
