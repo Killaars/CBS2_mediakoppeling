@@ -26,10 +26,14 @@ def preprocessing(parents,children):
     parents.loc[:,'publish_date_date'] = pd.to_datetime(parents.loc[:,'publish_date_date'])
     parents.loc[:,'title'] = parents.loc[:,'title'].str.lower()
     parents.loc[:,'content'] = parents.loc[:,'content'].str.lower()
+    parents.loc[:,'content'] = parents.loc[:,'content'].str.replace('-',' ')
+    parents.loc[:,'content'] = parents.loc[:,'content'].str.replace('  ',' ')
     
     # Children
     children.loc[:,'title'] = children.loc[:,'title'].str.lower()
     children.loc[:,'content'] = children.loc[:,'content'].str.lower()
+    children.loc[:,'content'] = children.loc[:,'content'].str.replace('-',' ')
+    children.loc[:,'content'] = children.loc[:,'content'].str.replace('  ',' ')
     
     return parents, children
     
@@ -44,7 +48,7 @@ Input:
 Ouput: id(s) from parent article
 '''
 #children['cbs_link_in_child'] = children.apply(find_link,axis=1)    
-def check_link(row):
+def check_link(row, parents):
     # select content from row
     content = row['content']
     # some preprocessing of the content
@@ -72,7 +76,7 @@ Input:
 Ouput: id(s) from parent article
 
 '''
-def check_title(row):
+def check_title(row, parents):
     import datetime
     
     # make datetime objects from the dates
@@ -101,9 +105,8 @@ Input:
     - dataframe with all parents
 Ouput: id(s) from parent article
 '''  
-def check_sleutelwoorden(row):
+def check_sleutelwoorden(row, parents, column = 'content'):
     import datetime
-    
     # make datetime objects from the dates
     date = pd.to_datetime(row['publish_date_date'])
     parents.loc[:,'publish_date_date'] = pd.to_datetime(parents['publish_date_date'])
@@ -119,7 +122,7 @@ def check_sleutelwoorden(row):
     for index in parents_to_test.index:
         try:
             taxonomies = parents_to_test.loc[index,'taxonomies'].split(',')
-            matches = {x for x in taxonomies if x in row['content']}
+            matches = {x for x in taxonomies if x in row[column]}
             if len(matches)>0:
                 matches_to_return.append(parents_to_test.loc[index,'id'])
             

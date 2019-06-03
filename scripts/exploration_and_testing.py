@@ -5,10 +5,10 @@ from pathlib import Path
 import os,sys
 import re
 
-from project_functions import preprocessing
+from project_functions import preprocessing, check_sleutelwoorden
 
-path = Path('/Users/Lars/Documents/CBS/CBS2_mediakoppeling/data/')
-#path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
+#path = Path('/Users/Lars/Documents/CBS/CBS2_mediakoppeling/data/')
+path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
 # Variables
 upwindow = 7
 lowwindow = 2
@@ -221,15 +221,15 @@ def check_sleutelwoorden_whole_text(row):
 '''
 Function to check if the matches are correct
 '''
-def correct(row):
+def correct(row,rowname='test'):
     to_return = []
     for value in row['related_parents']:
-        if int(value) in row['test']:
+        if int(value) in row[rowname]:
             to_return.append('correct')
         else:
             to_return.append('false')
     return list(set(to_return))
-
+#%%
 test=children
 test['test'] = test.apply(check_title, axis = 1)
 bla = test[test['test'].map(lambda d: len(d))>0]
@@ -240,10 +240,37 @@ mask = blaa['related_parents'].apply(lambda x: '158123' not in x)
 blaa['check'] = blaa.apply(correct, axis=1)
 print(blaa[mask]['check'].value_counts())
 
+#%%
+test = full_kwic
+windows = ['20','40','60','80','100']
+
+for window in windows:
+    #window='100'
+    resultname = '%s_result' %(window)
+    test[resultname] = test.apply(check_sleutelwoorden,args=(parents,window),axis=1)
+    
+test.groupby('id').agg({'20_result': 'sum','40_result': 'sum','60_result': 'sum','80_result': 'sum','100_result': 'sum'}).to_csv(str(path / 'result_windows.csv'),encoding='utf-8')
+for window in windows:
+    #window='100'
+    resultname = '%s_result' %(window)  
+    bla = test[test[resultname].map(lambda d: len(d))>0]
+
+    blaa = bla[[resultname,'related_parents']]
+    blaa['related_parents'] = blaa['related_parents'].str.replace('matches/','').str.split(',')
+    mask = blaa['related_parents'].apply(lambda x: '158123' not in x)
+    blaa['check'] = blaa.apply(correct, args=(resultname,),axis=1)
+    
+    print(resultname)
+    print(blaa[mask]['check'].value_counts())
+
+    
+    
+
+
 
 #%%
 '''
-Using R to find the words around 'cbs'
+Using R to find the words around 'cbs' --> Common_contexts from nltk?
 '''
 
 # select relevant columns
@@ -251,11 +278,6 @@ children_to_write = children[['content','id']]
 
 # replace other references to cbs with cbs itself
 children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('centraal bureau voor de statistiek','cbs')
-!!!!!!!LEESTEKENS VERWIJDEREN? dus '-' replacen met ' ' en dan eventueel dubbele spaties eruit.
-children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('centraal -­bureau voor de statistiek','cbs')
-children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('centraal bureau -voor de statistiek','cbs')
-children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('centraal bureau voor -de statistiek','cbs')
-children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('centraal bureau voor de -statistiek','cbs')
 children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('cbs(cbs)','cbs')
 children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('cbs (cbs)','cbs')
 children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('cbs ( cbs )','cbs')
@@ -263,15 +285,21 @@ children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.repl
 # write df
 children_to_write[['content','id']].to_csv(str(path / 'children_content.csv'),encoding='utf-8')
 
-#%%
-test = pd.read_csv(str(path / 'text_around_cbs_20.csv'))
+#%% Loading results of R script in Full_kwic dataframe
+windows = ['20','40','60','80','100']
+kwic = pd.DataFrame()
+for window in windows:
+    
+    test = pd.read_csv(str(path / 'text_around_cbs_%s.csv') %(window))
+    
+    # split column and keep last entry for the entire column. Minus 1 for r to python conversion
+    test.loc[:,'docname'] = test.loc[:,'docname'].str.split('.').str[-1].astype(int) -1
+    def find_index_of_child(row):
+        index = children.index.values[row['docname']]
+        return children.loc[index,'id']
+    kwic['id'] = test.apply(find_index_of_child,axis=1)
+    kwic[window] = test['pre']+' '+test['keyword']+' '+test['post']
 
-# split column and keep last entry for the entire column. Minus 1 for r to python conversion
-test.loc[:,'docname'] = test.loc[:,'docname'].str.split('.').str[-1].astype(int) -1
-def find_index_of_child(row):
-    index = children.index.values[row['docname']]
-    return children.loc[index,'id']
-test['id'] = test.apply(find_index_of_child,axis=1)
-test['20'] = test['pre']+' '+test['keyword']+' '+test['post']
+full_kwic = kwic.merge(children,how='left',on='id')
+
 #%%
-full_test = test.merge(children,how='left',on='id')
