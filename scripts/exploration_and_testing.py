@@ -7,8 +7,8 @@ import re
 
 from project_functions import preprocessing
 
-#path = Path('/Users/Lars/Documents/CBS/CBS2_mediakoppeling/data/')
-path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
+path = Path('/Users/Lars/Documents/CBS/CBS2_mediakoppeling/data/')
+#path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
 # Variables
 upwindow = 7
 lowwindow = 2
@@ -239,3 +239,39 @@ blaa['related_parents'] = blaa['related_parents'].str.replace('matches/','').str
 mask = blaa['related_parents'].apply(lambda x: '158123' not in x)
 blaa['check'] = blaa.apply(correct, axis=1)
 print(blaa[mask]['check'].value_counts())
+
+
+#%%
+'''
+Using R to find the words around 'cbs'
+'''
+
+# select relevant columns
+children_to_write = children[['content','id']]
+
+# replace other references to cbs with cbs itself
+children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('centraal bureau voor de statistiek','cbs')
+!!!!!!!LEESTEKENS VERWIJDEREN? dus '-' replacen met ' ' en dan eventueel dubbele spaties eruit.
+children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('centraal -­bureau voor de statistiek','cbs')
+children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('centraal bureau -voor de statistiek','cbs')
+children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('centraal bureau voor -de statistiek','cbs')
+children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('centraal bureau voor de -statistiek','cbs')
+children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('cbs(cbs)','cbs')
+children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('cbs (cbs)','cbs')
+children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('cbs ( cbs )','cbs')
+
+# write df
+children_to_write[['content','id']].to_csv(str(path / 'children_content.csv'),encoding='utf-8')
+
+#%%
+test = pd.read_csv(str(path / 'text_around_cbs_20.csv'))
+
+# split column and keep last entry for the entire column. Minus 1 for r to python conversion
+test.loc[:,'docname'] = test.loc[:,'docname'].str.split('.').str[-1].astype(int) -1
+def find_index_of_child(row):
+    index = children.index.values[row['docname']]
+    return children.loc[index,'id']
+test['id'] = test.apply(find_index_of_child,axis=1)
+test['20'] = test['pre']+' '+test['keyword']+' '+test['post']
+#%%
+full_test = test.merge(children,how='left',on='id')

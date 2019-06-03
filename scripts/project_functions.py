@@ -5,13 +5,13 @@ from pathlib import Path
 import os,sys
 import re
 
-#path = Path('/Users/Lars/Documents/CBS/CBS2_mediakoppeling/data/')
-path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
+path = Path('/Users/Lars/Documents/CBS/CBS2_mediakoppeling/data/')
+#path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
 
 #%%
 
-parents = pd.read_csv(str(path / 'related_parents.csv'),index_col=0)
-children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
+#parents = pd.read_csv(str(path / 'related_parents.csv'),index_col=0)
+#children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
 
 #%% 
 # Variables
