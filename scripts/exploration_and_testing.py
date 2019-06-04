@@ -165,19 +165,7 @@ str = "Boer Arie wil graag Kippen Kip houden"
 matches = {x for x in a if x in str.lower()}
 print(matches)
 
-#%%
-paragraph = "Boer Arie wil graag kippen houden"
-wordlist = paragraph.split(" ")
-word="graag"
 
-index = wordlist.index(word)
-around = 5
-before = index-around
-if before <0:
-    before = index 
-first_part = wordlist[index-before:index]
-second_part = wordlist[index:index+around+1]
-print("%s %s" % (" ".join(first_part), " ".join(second_part)))
 #%%
 
 '''
@@ -225,13 +213,14 @@ def correct(row,rowname='test'):
     to_return = []
     for value in row['related_parents']:
         if int(value) in row[rowname]:
+#       if value in row[rowname]:
             to_return.append('correct')
         else:
             to_return.append('false')
-    return list(set(to_return))
+    return list(set(to_return)) # remove duplicates of 'correct' and 'false'
 #%%
 test=children
-test['test'] = test.apply(check_title, axis = 1)
+test['test'] = test.apply(check_link, axis = 1)
 bla = test[test['test'].map(lambda d: len(d))>0]
 
 blaa = bla[['test','related_parents']]
@@ -241,14 +230,15 @@ blaa['check'] = blaa.apply(correct, axis=1)
 print(blaa[mask]['check'].value_counts())
 
 #%%
-test = full_kwic
+test = full_kwic.tail(1000)
 windows = ['20','40','60','80','100']
 
 for window in windows:
     #window='100'
     resultname = '%s_result' %(window)
     test[resultname] = test.apply(check_sleutelwoorden,args=(parents,window),axis=1)
-    
+bloe = test.groupby('id').agg({'20_result': 'sum','40_result': 'sum','60_result': 'sum','80_result': 'sum','100_result': 'sum'})
+#%%    
 test.groupby('id').agg({'20_result': 'sum','40_result': 'sum','60_result': 'sum','80_result': 'sum','100_result': 'sum'}).to_csv(str(path / 'result_windows.csv'),encoding='utf-8')
 for window in windows:
     #window='100'
@@ -263,24 +253,40 @@ for window in windows:
     print(resultname)
     print(blaa[mask]['check'].value_counts())
 
+#%%
+def str2list(row,column):
+    from ast import literal_eval
+    value = row[column]
+    return literal_eval(value)
+#%%
+result_df = pd.read_csv(str(path / 'result_windows.csv'),encoding='utf-8')   
+#result_df = bloe
     
+related_parents = children[['id','related_parents']]
+related_parents['related_parents'] = related_parents['related_parents'].str.replace('matches/','').str.split(',')
+result_df = result_df.merge(related_parents,on='id', how='left')
+
+for window in windows:
+    #window='100'
+    resultname = '%s_result' %(window)
+    result_df[resultname] = result_df.apply(str2list, args=(resultname,), axis=1)
+    bla = result_df[result_df[resultname].map(lambda d: len(d))>0]
+
+    blaa = bla[[resultname,'related_parents']]
+    #blaa['related_parents'] = blaa['related_parents'].str.replace('matches/','').str.split(',')
+    mask = blaa['related_parents'].apply(lambda x: '158123' not in x)
+    blaa['check'] = blaa.apply(correct, args=(resultname,),axis=1)
     
-
-
+    print(resultname)
+    print(blaa[mask]['check'].value_counts())
 
 #%%
 '''
-Using R to find the words around 'cbs' --> Common_contexts from nltk?
+Using R to find the words around 'cbs'
 '''
 
 # select relevant columns
 children_to_write = children[['content','id']]
-
-# replace other references to cbs with cbs itself
-children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('centraal bureau voor de statistiek','cbs')
-children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('cbs(cbs)','cbs')
-children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('cbs (cbs)','cbs')
-children_to_write.loc[:,'content'] = children_to_write.loc[:,'content'].str.replace('cbs ( cbs )','cbs')
 
 # write df
 children_to_write[['content','id']].to_csv(str(path / 'children_content.csv'),encoding='utf-8')
@@ -303,3 +309,98 @@ for window in windows:
 full_kwic = kwic.merge(children,how='left',on='id')
 
 #%%
+paragraph = children.loc[204390,'content']
+import nltk
+nltk.download('punkt')
+ 
+def get_all_phrases_containing_tar_wrd(tar_passage, target_word, left_margin = 10, right_margin = 10):
+    """
+        Function to get all the phases that contain the target word in a text/passage tar_passage.
+        Workaround to save the output given by nltk Concordance function
+         
+        str target_word, str tar_passage int left_margin int right_margin --> list of str
+        left_margin and right_margin allocate the number of words/pununciation before and after target word
+        Left margin will take note of the beginning of the text
+    """
+    ## Create list of tokens using nltk function
+    tokens = nltk.word_tokenize(tar_passage)
+     
+    ## Create the text of tokens
+    text = nltk.Text(tokens)
+ 
+    ## Collect all the index or offset position of the target word
+    c = nltk.ConcordanceIndex(text.tokens)#, key = lambda s: s.lower())
+ 
+    ## Collect the range of the words that is within the target word by using text.tokens[start:end].
+    concordance_txt = ([text.tokens[max(0,offset-left_margin):offset+right_margin+1]
+                        for offset in c.offsets(target_word)])
+                        
+    ## join the sentences for each of the target phrase and return it
+    results =  [''.join([x+' ' for x in con_sub]) for con_sub in concordance_txt]
+    return results
+    #for result in results:
+    #    return(result,row['id'])
+    
+#%%
+test=children
+text_around_cbs = pd.DataFrame()
+newindex=0
+for index in test.index:
+    for window in windows:
+        results = get_all_phrases_containing_tar_wrd(test.loc[index,'content'],'cbs',int(window),int(window))
+        for result in results:
+            text_around_cbs.loc[newindex,window] = result
+            text_around_cbs.loc[newindex,'id'] = test.loc[index,'id']
+            newindex+=1
+        newindex = newindex - len(results)
+    newindex = newindex + len(results)
+text_around_cbs.to_csv(str(path / 'text_around_cbs_python.csv'),encoding='utf-8')
+
+#%%
+def find_sleutel_woorden_in_parts(row,parents,windows=['20','40','60','80','100']):
+    import datetime
+    # make datetime objects from the dates
+    date = pd.to_datetime(row['publish_date_date'])
+    parents.loc[:,'publish_date_date'] = pd.to_datetime(parents['publish_date_date'])
+    
+    # define datebounds
+    up_date = date + datetime.timedelta(days=upwindow)
+    low_date = date - datetime.timedelta(days=lowwindow)
+    
+    # select parents within bounds
+    parents_to_test = parents[(parents['publish_date_date']>low_date)&(parents['publish_date_date']<up_date)]
+    matches_to_return = []
+    # Each window gets its own submatch. They are added to each other and splitted after the apply function. 
+    for window in windows:
+        submatches_to_return = []
+        results = get_all_phrases_containing_tar_wrd(row['content'],'cbs',int(window),int(window))
+        for result in results:
+            for index in parents_to_test.index:
+                try:
+                    taxonomies = parents_to_test.loc[index,'taxonomies'].split(',')
+                    matches = {x for x in taxonomies if x in result}
+                    if len(matches)>0:
+                        submatches_to_return.append(parents_to_test.loc[index,'id'])
+                    
+                except:
+                    pass
+        matches_to_return.append(submatches_to_return)  
+    return matches_to_return
+result_df = children.tail(500)
+
+result_df['test'] = result_df.apply(find_sleutel_woorden_in_parts,args=(parents,),axis=1)        
+result_df[['20','40','60','80','100']] = pd.DataFrame(result_df['test'].values.tolist(), index= result_df.index)    
+
+for window in windows:
+    #window='100'
+    resultname = '%s' %(window)
+    #result_df[resultname] = result_df.apply(str2list, args=(resultname,), axis=1)
+    bla = result_df[result_df[resultname].map(lambda d: len(d))>0]
+
+    blaa = bla[[resultname,'related_parents']]
+    blaa['related_parents'] = blaa['related_parents'].str.replace('matches/','').str.split(',')
+    mask = blaa['related_parents'].apply(lambda x: '158123' not in x)
+    blaa['check'] = blaa.apply(correct, args=(resultname,),axis=1)
+    
+    print(resultname)
+    print(blaa[mask]['check'].value_counts())    

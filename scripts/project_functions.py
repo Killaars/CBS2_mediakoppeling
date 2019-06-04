@@ -32,8 +32,14 @@ def preprocessing(parents,children):
     # Children
     children.loc[:,'title'] = children.loc[:,'title'].str.lower()
     children.loc[:,'content'] = children.loc[:,'content'].str.lower()
-    children.loc[:,'content'] = children.loc[:,'content'].str.replace('-',' ')
-    children.loc[:,'content'] = children.loc[:,'content'].str.replace('  ',' ')
+#    children.loc[:,'content'] = children.loc[:,'content'].str.replace('-',' ') Breaks check_link
+#    children.loc[:,'content'] = children.loc[:,'content'].str.replace('  ',' ')
+    
+    # replace other references to cbs with cbs itself
+    children.loc[:,'content'] = children.loc[:,'content'].str.replace('centraal bureau voor de statistiek','cbs')
+    children.loc[:,'content'] = children.loc[:,'content'].str.replace('cbs(cbs)','cbs')
+    children.loc[:,'content'] = children.loc[:,'content'].str.replace('cbs (cbs)','cbs')
+    children.loc[:,'content'] = children.loc[:,'content'].str.replace('cbs ( cbs )','cbs')
     
     return parents, children
     
@@ -128,4 +134,34 @@ def check_sleutelwoorden(row, parents, column = 'content'):
             
         except:
             pass
+    return matches_to_return
+
+def find_sleutel_woorden_in_parts(row,parents,windows=['20','40','60','80','100']):
+    import datetime
+    # make datetime objects from the dates
+    date = pd.to_datetime(row['publish_date_date'])
+    parents.loc[:,'publish_date_date'] = pd.to_datetime(parents['publish_date_date'])
+    
+    # define datebounds
+    up_date = date + datetime.timedelta(days=upwindow)
+    low_date = date - datetime.timedelta(days=lowwindow)
+    
+    # select parents within bounds
+    parents_to_test = parents[(parents['publish_date_date']>low_date)&(parents['publish_date_date']<up_date)]
+    matches_to_return = []
+    # Each window gets its own submatch. They are added to each other and splitted after the apply function. 
+    for window in windows:
+        submatches_to_return = []
+        results = get_all_phrases_containing_tar_wrd(row['content'],'cbs',int(window),int(window))
+        for result in results:
+            for index in parents_to_test.index:
+                try:
+                    taxonomies = parents_to_test.loc[index,'taxonomies'].split(',')
+                    matches = {x for x in taxonomies if x in result}
+                    if len(matches)>0:
+                        submatches_to_return.append(parents_to_test.loc[index,'id'])
+                    
+                except:
+                    pass
+        matches_to_return.append(submatches_to_return)  
     return matches_to_return
