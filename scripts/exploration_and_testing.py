@@ -4,6 +4,8 @@ import pandas as pd
 from pathlib import Path
 import os,sys
 import re
+import nltk
+nltk.download('punkt')
 
 from project_functions import preprocessing, check_sleutelwoorden
 
@@ -374,6 +376,7 @@ def find_sleutel_woorden_in_parts(row,parents,windows=['20','40','60','80','100'
     for window in windows:
         submatches_to_return = []
         results = get_all_phrases_containing_tar_wrd(row['content'],'cbs',int(window),int(window))
+        # In each result is checked if the sleutelwoorden exist
         for result in results:
             for index in parents_to_test.index:
                 try:
