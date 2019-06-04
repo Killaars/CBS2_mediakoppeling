@@ -10,8 +10,10 @@ nltk.download('punkt')
 from project_functions import preprocessing, find_sleutel_woorden_in_parts
 
 #path = Path('/Users/Lars/Documents/CBS/CBS2_mediakoppeling/data/')
-path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
-#path = Path('/flashblade/lars_data/CBS/CBS_2_mediakoppeling/data/solr/')
+#path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
+path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
+
+
 # Variables
 upwindow = 7
 lowwindow = 2
