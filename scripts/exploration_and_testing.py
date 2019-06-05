@@ -44,7 +44,7 @@ print(temp_c['related_parents'])
 print(temp_p['related_parents'])
 print(temp_c['related_children'])
 print(temp_p['related_children'])
-
+#jkd
 
 #%%
 #parents['word_count'].value_counts().sort_index()
