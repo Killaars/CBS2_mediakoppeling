@@ -407,3 +407,74 @@ for window in windows:
     
     print(resultname)
     print(blaa[mask]['check'].value_counts())    
+    
+#%%
+libpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/taxonomie/')
+
+f = open(str(libpath / "cbs-taxonomie-alfabetische-lijst.txt"), "r",encoding='utf-8')
+
+lines = [line.rstrip('\n') for line in f]
+lines = lines[8:]
+lines = filter(None, lines) # remove elements that contain of empty strings
+df = pd.DataFrame()
+for x in lines:
+    if not x.startswith('	'):
+        index = x
+        for column in ['GEBRUIK','TT','UF','BT','RT','CBS English','NT','Historische notitie',
+                       'Scope notitie','Code','Eurovoc','DF','EQ']:
+            df.loc[index,column] = 999
+    if x.startswith('	'):
+        column = x.split(':')[0][1:] # skip first two letters '/t'
+        value = x.split(':')[1][1:] # second part is the word, starts with space
+        if df.loc[index,column] == 999:
+            df.loc[index,column] = value
+        else:
+            df.loc[index,column] = value+', '+str(df.loc[index,column])
+        
+f.close()
+df = df[['GEBRUIK','TT','UF','BT','RT','CBS English','NT','Historische notitie','Scope notitie']]
+df.to_csv(str(libpath / 'taxonomie_df.csv'))
+
+'''
+TT = TopTerm
+UF = Gebruikt voor
+BT = BredereTerm
+RT = RelatedTerm
+NT = NauwereTerm
+'''
+#%% Wegschrijven kleine kolommen voor Henk
+for column in df.columns:
+    if len(df[df[column]!=999]) < 40:
+        filename = 'code_%s_aantal_%s.csv' %(column,len(df[df[column]!=999]))
+        df[df[column]!=999].to_csv(str(libpath / filename))
+        
+#%%
+'''
+Synoniemen aanvullen met:
+    Gebruik kolom en UF kolom
+    BredereTerm en de TopTerm, die resultaten moeten in mindere mate meewerken aan matching score. 
+'''
+test = children.head(1)
+def find_synoniemen(row,taxonomie_df):
+    taxonomies = row['taxonomies'].split(',')
+    taxonomies = ['emancipatie']
+    print(taxonomies)
+    Gebruik_UF = []
+    BT_TT = []
+    taxonomies_BT_TT = taxonomies
+    for taxonomie in taxonomies:
+        print(taxonomie)
+        if taxonomie in taxonomie_df.index:
+            Gebruik_UF.append(taxonomie_df.loc[taxonomie,'GEBRUIK'])
+            Gebruik_UF.append(taxonomie_df.loc[taxonomie,'UF'])
+            BT_TT.append(taxonomie_df.loc[taxonomie,'TT'])
+            BT_TT.append(taxonomie_df.loc[taxonomie,'BT'])
+    taxonomies.append(Gebruik_UF)
+    taxonomies_BT_TT.append(BT_TT)
+    print(taxonomies[2])
+    print(taxonomies[1])
+    return taxonomies
+    
+test.loc[:,'test'] = test.apply(find_synoniemen,args=(df,),axis=1)
+test.loc[:,'test2'] = test.loc[:,'test'].str.slct[1]
+#RETURN SLICE OF TAXONOMIES IN MULTIPLIES COLUMNS, OR SLICE THE COLUMN AFTERWARDS

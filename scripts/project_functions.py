@@ -152,7 +152,7 @@ def find_sleutel_woorden_in_parts(row,parents,windows=['20','40','60','80','100'
     # Each window gets its own submatch. They are added to each other and splitted after the apply function. 
     for window in windows:
         submatches_to_return = []
-        results = get_all_phrases_containing_tar_wrd(row['content'],'cbs',int(window),int(window))
+        results = get_all_phrases_containing_target_word(row['content'],'cbs',int(window),int(window))
         for result in results:
             for index in parents_to_test.index:
                 try:
@@ -166,18 +166,19 @@ def find_sleutel_woorden_in_parts(row,parents,windows=['20','40','60','80','100'
         matches_to_return.append(submatches_to_return)  
     return matches_to_return
 
-def get_all_phrases_containing_tar_wrd(tar_passage, target_word, left_margin = 10, right_margin = 10):
+def get_all_phrases_containing_target_word(target_passage, target_word, left_margin = 10, right_margin = 10):
+    import nltk
 
     """
         Function to get all the phases that contain the target word in a text/passage tar_passage.
         Workaround to save the output given by nltk Concordance function
          
-        str target_word, str tar_passage int left_margin int right_margin --> list of str
+        str target_word, str target_passage int left_margin int right_margin --> list of str
         left_margin and right_margin allocate the number of words/pununciation before and after target word
         Left margin will take note of the beginning of the text
     """
     ## Create list of tokens using nltk function
-    tokens = nltk.word_tokenize(tar_passage)
+    tokens = nltk.word_tokenize(target_passage)
      
     ## Create the text of tokens
     text = nltk.Text(tokens)
