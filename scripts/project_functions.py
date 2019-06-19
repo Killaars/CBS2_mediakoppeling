@@ -44,17 +44,18 @@ def preprocessing(parents,children):
     return parents, children
     
 
-'''
-# Function to check if there is a link to the CBS site
-#children['cbs_link_in_child'] = children.apply(find_link,axis=1)
 
-Input: 
-    - row with all data regarding the newsarticle (content is used)
-    - dataframe with all parents
-Ouput: id(s) from parent article
-'''
 #children['cbs_link_in_child'] = children.apply(find_link,axis=1)    
 def check_link(row, parents):
+    '''
+    # Function to check if there is a link to the CBS site
+    #children['cbs_link_in_child'] = children.apply(find_link,axis=1)
+    
+    Input: 
+        - row with all data regarding the newsarticle (content is used)
+        - dataframe with all parents
+    Ouput: id(s) from parent article
+    '''
     # select content from row
     content = row['content']
     # some preprocessing of the content
@@ -74,15 +75,16 @@ def check_link(row, parents):
                     to_return.append(id)
     return to_return
     
-'''
-Function to check if the title of the CBS article is found in the newsarticle.
-Input: 
-    - row with all data regarding the newsarticle (date and content are used)
-    - dataframe with all parents
-Ouput: id(s) from parent article
 
-'''
 def check_title(row, parents):
+    '''
+    Function to check if the title of the CBS article is found in the newsarticle.
+    Input: 
+        - row with all data regarding the newsarticle (date and content are used)
+        - dataframe with all parents
+    Ouput: id(s) from parent article
+    
+    '''
     import datetime
     
     # make datetime objects from the dates
@@ -103,15 +105,16 @@ def check_title(row, parents):
     return matches_to_return
     
 
-'''
-Function to check if CBS sleutelwoorden exist in the text of the article.
 
-Input: 
-    - row with all data regarding the newsarticle (date and content are used)
-    - dataframe with all parents
-Ouput: id(s) from parent article
-'''  
 def check_sleutelwoorden(row, parents, column = 'content'):
+    '''
+    Function to check if CBS sleutelwoorden exist in the text of the article.
+    
+    Input: 
+        - row with all data regarding the newsarticle (date and content are used)
+        - dataframe with all parents
+    Ouput: id(s) from parent article
+    '''  
     import datetime
     # make datetime objects from the dates
     date = pd.to_datetime(row['publish_date_date'])
@@ -137,6 +140,9 @@ def check_sleutelwoorden(row, parents, column = 'content'):
     return matches_to_return
 
 def find_sleutel_woorden_in_parts(row,parents,windows=['20','40','60','80','100']):
+    '''
+    Same as check_sleutelwoorden, but with different word windows around cbs
+    '''
     import datetime
     # make datetime objects from the dates
     date = pd.to_datetime(row['publish_date_date'])
@@ -193,3 +199,132 @@ def get_all_phrases_containing_target_word(target_passage, target_word, left_mar
     ## join the sentences for each of the target phrase and return it
     results =  [''.join([x+' ' for x in con_sub]) for con_sub in concordance_txt]
     return results
+
+
+def process_taxonomie_database():
+    '''
+    Function to process the cbs taxonomie database of Henk Laloli.
+    Input:
+        None, but uses the .txt database dump at the specified location
+    Output:
+        Writes pandas dataframe as csv at specified location. Word is on the index and the other terms in the columns
+    '''
+    libpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/taxonomie/')
+    
+    f = open(str(libpath / "cbs-taxonomie-alfabetische-lijst.txt"), "r",encoding='utf-8')
+    
+    lines = [line.rstrip('\n') for line in f]
+    lines = lines[8:]
+    lines = filter(None, lines) # remove elements that contain of empty strings
+    df = pd.DataFrame()
+    for x in lines:
+        if not x.startswith('	'):
+            index = x
+            for column in ['GEBRUIK','TT','UF','BT','RT','CBS English','NT','Historische notitie',
+                           'Scope notitie','Code','Eurovoc','DF','EQ']:
+                df.loc[index,column] = 999
+        if x.startswith('	'):
+            column = x.split(':')[0][1:] # skip first two letters '/t'
+            value = x.split(':')[1][1:] # second part is the word, starts with space
+            if df.loc[index,column] == 999:
+                df.loc[index,column] = value
+            else:
+                df.loc[index,column] = value+', '+str(df.loc[index,column])
+            
+    f.close()
+    df = df[['GEBRUIK','TT','UF','BT','RT','CBS English','NT','Historische notitie','Scope notitie']]
+    df[df==999] = None
+    df.to_csv(str(libpath / 'taxonomie_df.csv'))
+    
+    '''
+    TT = TopTerm
+    UF = Gebruikt voor
+    BT = BredereTerm
+    RT = RelatedTerm
+    NT = NauwereTerm
+    '''
+    
+def find_synoniemen(row,taxonomie_df):
+    '''
+    sleutelwoorden(taxonomie) aanvullen met synoniemen op basis van de taxonomie database van Henk Laloli:
+        2 kolommen, een met de Gebruik kolom en de UsedFor kolom uit de database en een met de BredereTerm en de TopTerm.
+        De resultaten van de laatste kolom moeten in mindere mate meewerken aan matching score. 
+    '''
+    import nltk
+    from nltk.corpus import stopwords
+    import re
+    
+    stop_words = set(stopwords.words('dutch'))
+    taxonomies = row['taxonomies']
+    Gebruik_UF = ''
+    BT_TT = ''
+    if type(taxonomies) != float:     
+        taxonomies = taxonomies.split(',')                                     # Some parents have no content (nan)
+        for taxonomie in taxonomies:
+            if taxonomie in taxonomie_df.index:
+                if taxonomie_df.loc[taxonomie,'GEBRUIK'] != None:
+                    Gebruik_UF = Gebruik_UF + ' ' + taxonomie_df.loc[taxonomie,'GEBRUIK']
+                if taxonomie_df.loc[taxonomie,'UF'] != None:
+                    Gebruik_UF = Gebruik_UF + ' ' + taxonomie_df.loc[taxonomie,'UF']
+                if taxonomie_df.loc[taxonomie,'TT'] != None:
+                    BT_TT = BT_TT + ' ' + taxonomie_df.loc[taxonomie,'TT']
+                if taxonomie_df.loc[taxonomie,'BT'] != None:
+                    BT_TT = BT_TT + ' ' + taxonomie_df.loc[taxonomie,'BT']
+    
+    temp = nltk.tokenize.word_tokenize(Gebruik_UF)
+    Gebruik_UF = [w for w in temp if not w in stop_words]
+    temp = nltk.tokenize.word_tokenize(BT_TT)
+    BT_TT = [w for w in temp if not w in stop_words]
+    return (' '.join(Gebruik_UF),' '.join(BT_TT))
+
+def select_and_prepare_first_paragraph_of_CBS_article(row):
+    '''
+    Function to find the first paragraph of the CBS article, remove stopwords and return it as a string.
+    '''
+    import nltk
+    from nltk.corpus import stopwords
+    import re
+    stop_words = set(stopwords.words('dutch'))
+    
+    filtered_intro = ''                                                 # Set as empty string for rows without content
+    content = row['content']
+    if type(content) != float:                                          # Some parents have no content (nan)
+        intro = content.split('\n')[0]                                  # Select first block of text
+        intro = re.sub(r'[^\w\s]','',intro)                             # Remove punctuation
+        intro = nltk.tokenize.word_tokenize(intro)
+        filtered_intro = [w for w in intro if not w in stop_words]      # Remove stopwords
+    return ' '.join(filtered_intro)                                     # Convert from list to space-seperated string
+
+def select_and_prepare_title_of_CBS_article(row):
+    '''
+    Function to remove stopwords from the title and return it as a string.
+    '''
+    import nltk
+    from nltk.corpus import stopwords
+    import re
+    stop_words = set(stopwords.words('dutch'))
+    
+    filtered_title = ''                                                 # Set as empty string for rows without content
+    title = row['title']
+    if type(title) != float:                                          # Some parents have no content (nan)
+        title = re.sub(r'[^\w\s]','',title)                             # Remove punctuation
+        title = nltk.tokenize.word_tokenize(title)
+        filtered_title = [w for w in title if not w in stop_words]      # Remove stopwords
+    return ' '.join(filtered_title)                                     # Convert from list to space-seperated string
+    
+def expand_parents_df(parents):
+    '''
+    Function to expand the parents_df with new cells, to be done when new CBS articles are added to the parents database
+    '''
+    taxonomie_df = pd.read_csv('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/taxonomie/taxonomie_df.csv',index_col=0)
+    taxonomie_df[taxonomie_df=='999'] = None
+    taxonomie_df[taxonomie_df=='999.0'] = None
+    parents.loc[:,'found_synonyms'] = parents.apply(find_synoniemen, args=(taxonomie_df,),axis=1)
+    parents.loc[:,'Gebruik_UF'] = [d[0] for d in parents['found_synonyms']]
+    parents.loc[:,'BT_TT'] = [d[1] for d in parents['found_synonyms']]
+    parents.drop(['found_synonyms'], axis=1)
+    
+    parents.loc[:,'first_paragraph_without_stopwords'] = parents.apply(select_and_prepare_first_paragraph_of_CBS_article,axis=1)
+    parents.loc[:,'title_without_stopwords'] = parents.apply(select_and_prepare_title_of_CBS_article,axis=1)
+    
+    return parents

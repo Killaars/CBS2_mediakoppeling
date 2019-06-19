@@ -7,7 +7,7 @@ import re
 import nltk
 nltk.download('punkt')
 
-from project_functions import preprocessing, check_sleutelwoorden
+from project_functions import preprocessing, check_sleutelwoorden,expand_parents_df
 
 #path = Path('/Users/Lars/Documents/CBS/CBS2_mediakoppeling/data/')
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
@@ -27,58 +27,15 @@ parents.to_csv(str(path / 'related_parents.csv'),encoding='utf-8')
 #%%
 
 parents = pd.read_csv(str(path / 'related_parents.csv'),index_col=0)
+#parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0) # With added columns by expand_parents_df
 children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
 
 # do the preprocessing of the parents and children. Defined in script functions.
 parents,children = preprocessing(parents,children)
 
 #%%
-df = pd.read_csv(str(path / 'input_no_CBS_no_social.csv'))
 
-#%%
-#Kinderen die ook parents hebben en andersom
-temp_c = children.dropna(subset=['related_children'])
-temp_p = parents.dropna(subset=['related_parents'])
-
-print(temp_c['related_parents'])
-print(temp_p['related_parents'])
-print(temp_c['related_children'])
-print(temp_p['related_children'])
-#jkd
-
-#%%
-#parents['word_count'].value_counts().sort_index()
-
-short_parents = parents[parents['word_count']<10]
-print(short_parents['content'])
-print(parents['themes_string'].value_counts())
-parents[['medium_category','word_count','content']].groupby('word_count').mean()
-
-#%%
-count=0
-for index in children.index:
-    content = children.loc[index,'content']
-    #print(content)
-    content = content.replace('- ','-')
-    splitted = content.split(' ')
-    for split in splitted:
-        if 'www.cbs.nl/' in split:
-            string = '\n%s - %s' %(index,split.replace('\n',''))
-            print(string)
-            with open(str(path / 'urls.txt'),'a') as file:
-                file.write(string)
-            #print(index, split)
-            children.loc[index,'cbs_link_in_child'] = split
-            count+=1
-            #sys.exit()
-
-#%%
-with_url = children.dropna(subset=['cbs_link_in_child'])
-for index in with_url.index:
-    print(index)
-    print(parents[parents['link'].str.contains(with_url.loc[index,'cbs_link_in_child'])==True]['id'].values)
-    sys.exit()
-    
+parents = expand_parents_df(parents)    
 #%% 
 '''
 # Function to check if there is a link to the CBS site
@@ -143,32 +100,6 @@ def check_title(row):
 #df[df['column'].map(lambda d: len(d)) > 0]
 
 #%%
-#replace related_parents column with comma separated array of str
-blaa['related_parents'] = blaa['related_parents'].str.replace('matches/','').str.split(',')
-
-#%% Count taxonomies
-bla = []
-
-for column in parents['taxonomies_string'].values:
-    
-    try:
-        for s in column.split(','):
-            bla.append(s)
-    except:
-        print(column)
-bla = pd.DataFrame({'taxonomies':bla})
-bla['taxonomies'].value_counts()
-
-#%% Check if sleutelwoorden exist in content
-a = ['leerkracht', 'zwemveilig', 'zwemles']
-a = ['kaas', 'choco', 'kip']
-str = "Boer Arie wil graag Kippen Kip houden"
-# Check if strings of set a are found in str
-matches = {x for x in a if x in str.lower()}
-print(matches)
-
-
-#%%
 
 '''
 Function to check if CBS sleutelwoorden exist in the text of the article.
@@ -220,7 +151,7 @@ def correct(row,rowname='test'):
         else:
             to_return.append('false')
     return list(set(to_return)) # remove duplicates of 'correct' and 'false'
-#%%
+
 test=children
 test['test'] = test.apply(check_link, axis = 1)
 bla = test[test['test'].map(lambda d: len(d))>0]
@@ -282,33 +213,7 @@ for window in windows:
     print(resultname)
     print(blaa[mask]['check'].value_counts())
 
-#%%
-'''
-Using R to find the words around 'cbs'
-'''
 
-# select relevant columns
-children_to_write = children[['content','id']]
-
-# write df
-children_to_write[['content','id']].to_csv(str(path / 'children_content.csv'),encoding='utf-8')
-
-#%% Loading results of R script in Full_kwic dataframe
-windows = ['20','40','60','80','100']
-kwic = pd.DataFrame()
-for window in windows:
-    
-    test = pd.read_csv(str(path / 'text_around_cbs_%s.csv') %(window))
-    
-    # split column and keep last entry for the entire column. Minus 1 for r to python conversion
-    test.loc[:,'docname'] = test.loc[:,'docname'].str.split('.').str[-1].astype(int) -1
-    def find_index_of_child(row):
-        index = children.index.values[row['docname']]
-        return children.loc[index,'id']
-    kwic['id'] = test.apply(find_index_of_child,axis=1)
-    kwic[window] = test['pre']+' '+test['keyword']+' '+test['post']
-
-full_kwic = kwic.merge(children,how='left',on='id')
 
 #%%
 paragraph = children.loc[204390,'content']
@@ -408,73 +313,67 @@ for window in windows:
     print(resultname)
     print(blaa[mask]['check'].value_counts())    
     
+
 #%%
-libpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/taxonomie/')
 
-f = open(str(libpath / "cbs-taxonomie-alfabetische-lijst.txt"), "r",encoding='utf-8')
-
-lines = [line.rstrip('\n') for line in f]
-lines = lines[8:]
-lines = filter(None, lines) # remove elements that contain of empty strings
-df = pd.DataFrame()
-for x in lines:
-    if not x.startswith('	'):
-        index = x
-        for column in ['GEBRUIK','TT','UF','BT','RT','CBS English','NT','Historische notitie',
-                       'Scope notitie','Code','Eurovoc','DF','EQ']:
-            df.loc[index,column] = 999
-    if x.startswith('	'):
-        column = x.split(':')[0][1:] # skip first two letters '/t'
-        value = x.split(':')[1][1:] # second part is the word, starts with space
-        if df.loc[index,column] == 999:
-            df.loc[index,column] = value
-        else:
-            df.loc[index,column] = value+', '+str(df.loc[index,column])
-        
-f.close()
-df = df[['GEBRUIK','TT','UF','BT','RT','CBS English','NT','Historische notitie','Scope notitie']]
-df.to_csv(str(libpath / 'taxonomie_df.csv'))
-
-'''
-TT = TopTerm
-UF = Gebruikt voor
-BT = BredereTerm
-RT = RelatedTerm
-NT = NauwereTerm
-'''
-#%% Wegschrijven kleine kolommen voor Henk
-for column in df.columns:
-    if len(df[df[column]!=999]) < 40:
-        filename = 'code_%s_aantal_%s.csv' %(column,len(df[df[column]!=999]))
-        df[df[column]!=999].to_csv(str(libpath / filename))
-        
-#%%
-'''
-Synoniemen aanvullen met:
-    Gebruik kolom en UF kolom
-    BredereTerm en de TopTerm, die resultaten moeten in mindere mate meewerken aan matching score. 
-'''
-test = children.head(1)
-def find_synoniemen(row,taxonomie_df):
-    taxonomies = row['taxonomies'].split(',')
-    taxonomies = ['emancipatie']
-    print(taxonomies)
-    Gebruik_UF = []
-    BT_TT = []
-    taxonomies_BT_TT = taxonomies
-    for taxonomie in taxonomies:
-        print(taxonomie)
-        if taxonomie in taxonomie_df.index:
-            Gebruik_UF.append(taxonomie_df.loc[taxonomie,'GEBRUIK'])
-            Gebruik_UF.append(taxonomie_df.loc[taxonomie,'UF'])
-            BT_TT.append(taxonomie_df.loc[taxonomie,'TT'])
-            BT_TT.append(taxonomie_df.loc[taxonomie,'BT'])
-    taxonomies.append(Gebruik_UF)
-    taxonomies_BT_TT.append(BT_TT)
-    print(taxonomies[2])
-    print(taxonomies[1])
-    return taxonomies
+def sleutelwoorden_routine(row,parents):
     
-test.loc[:,'test'] = test.apply(find_synoniemen,args=(df,),axis=1)
-test.loc[:,'test2'] = test.loc[:,'test'].str.slct[1]
-#RETURN SLICE OF TAXONOMIES IN MULTIPLIES COLUMNS, OR SLICE THE COLUMN AFTERWARDS
+    '''
+    Function to find matches with the child based on the sleutelwoorden of CBS articles
+    Consists of multiple routines:
+        - Match with sleutelwoorden and synonyms of the sleutelwoorden
+        - Match with the BredereTermen and TopTermen of the sleutelwoorden
+        - Match with sleutelwoorden based on the title of the CBS article
+        - Match with sleutelwoorden based on the first paragraph of the CBS article
+        
+    Each of these routines result in a different confidence score:
+        -
+        
+    
+    '''
+    import datetime
+    
+    # First process the content
+    content = row['content']
+    content = re.sub(r'[^\w\s]','',content)                             # Remove punctuation
+    #content = ['winkelen','huizenprijzen']
+    
+    # Make datetime objects from the dates
+    date = pd.to_datetime(row['publish_date_date'])
+    parents.loc[:,'publish_date_date'] = pd.to_datetime(parents['publish_date_date'])
+    
+    # Define datebounds
+    up_date = date + datetime.timedelta(days=upwindow)
+    low_date = date - datetime.timedelta(days=lowwindow)
+    
+    # Select parents within bounds
+    parents_to_test = parents[(parents['publish_date_date']>low_date)&(parents['publish_date_date']<up_date)]
+    
+    matches_to_return_sleutelwoorden = []
+    matches_to_return_BT_TT = []
+    matches_to_return_title = []
+    matches_to_return_intro = []
+    
+    for index in parents_to_test.index:
+        try:
+            taxonomies = parents_to_test.loc[index,'taxonomies'].split(',')
+            print(taxonomies)
+            # extend list of sleutelwoorden, or append, depending on the size of the synonyms. 
+            if len(parents_to_test.loc[index,'Gebruik_UF'].split(' '))>1:
+                taxonomies.extend(parents_to_test.loc[index,'Gebruik_UF'].split(' '))
+            else:
+                taxonomies.append(parents_to_test.loc[index,'Gebruik_UF'].split(' '))
+            print(taxonomies)
+            matches = {x for x in taxonomies if x in content}
+            if len(matches)>0:
+                matches_to_return_sleutelwoorden.append(parents_to_test.loc[index,'id'])
+            
+        except:
+            pass
+        
+        matches_to_return = (matches_to_return_sleutelwoorden,matches_to_return_BT_TT,matches_to_return_title,matches_to_return_intro)
+    return matches_to_return
+    
+    
+test = children.tail(1)
+test.apply(sleutelwoorden_routine,args=(parents,),axis=1)    
