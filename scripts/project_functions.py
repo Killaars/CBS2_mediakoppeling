@@ -43,7 +43,18 @@ def preprocessing(parents,children):
     
     return parents, children
     
-
+def correct(row,rowname='test'):
+    '''
+    Function to check if the matches are correct
+    '''
+    to_return = []
+    for value in row['related_parents']:
+        if int(value) in row[rowname]:
+#       if value in row[rowname]:
+            to_return.append('correct')
+        else:
+            to_return.append('false')
+    return list(set(to_return)) # remove duplicates of 'correct' and 'false'
 
 #children['cbs_link_in_child'] = children.apply(find_link,axis=1)    
 def check_link(row, parents):
@@ -328,3 +339,83 @@ def expand_parents_df(parents):
     parents.loc[:,'title_without_stopwords'] = parents.apply(select_and_prepare_title_of_CBS_article,axis=1)
     
     return parents
+
+def sleutelwoorden_routine(row,parents):
+    
+    '''   
+    
+    Function to find matches with the child based on the sleutelwoorden of CBS articles
+    Consists of multiple routines:
+        - Match with sleutelwoorden and synonyms of the sleutelwoorden
+        - Match with the BredereTermen and TopTermen of the sleutelwoorden
+        - Match with sleutelwoorden based on the title of the CBS article
+        - Match with sleutelwoorden based on the first paragraph of the CBS article
+
+    
+    '''
+    import datetime
+    
+    # First process the content
+    content = row['content']
+    content = re.sub(r'[^\w\s]','',content)                             # Remove punctuation
+    
+    # Make datetime objects from the dates
+    date = pd.to_datetime(row['publish_date_date'])
+    parents.loc[:,'publish_date_date'] = pd.to_datetime(parents['publish_date_date'])
+    
+    # Define datebounds
+    up_date = date + datetime.timedelta(days=upwindow)
+    low_date = date - datetime.timedelta(days=lowwindow)
+    
+    # Select parents within bounds
+    parents_to_test = parents[(parents['publish_date_date']>low_date)&(parents['publish_date_date']<up_date)]
+    
+    matches_to_return_sleutelwoorden = []
+    matches_to_return_BT_TT = []
+    matches_to_return_title = []
+    matches_to_return_intro = []
+        
+    for index in parents_to_test.index:
+        # Match on sleutelwoorden and synonyms
+        try:
+            taxonomies = parents_to_test.loc[index,'taxonomies'].split(',')
+            # extend list of sleutelwoorden, or append, depending on the size of the synonyms. 
+            if len(parents_to_test.loc[index,'Gebruik_UF'].split(' '))>1:
+                taxonomies.extend(parents_to_test.loc[index,'Gebruik_UF'].split(' '))
+            else:
+                taxonomies.append(parents_to_test.loc[index,'Gebruik_UF'].split(' '))
+            matches = {x for x in taxonomies if x in content}
+            if len(matches)>0:
+                matches_to_return_sleutelwoorden.append(parents_to_test.loc[index,'id'])
+            
+        except:
+            pass
+        # Match on BredereTermen and TopTermen
+        try:
+            taxonomies = parents_to_test.loc[index,'BT_TT'].split(' ')
+            matches = {x for x in taxonomies if x in content}
+            if len(matches)>0:
+                matches_to_return_BT_TT.append(parents_to_test.loc[index,'id'])
+            
+        except:
+            pass
+        # Match on CBS title
+        try:
+            taxonomies = parents_to_test.loc[index,'title_without_stopwords'].split(' ')
+            matches = {x for x in taxonomies if x in content}
+            if len(matches)>0:
+                matches_to_return_title.append(parents_to_test.loc[index,'id'])
+            
+        except:
+            pass
+        # Match on first paragraph of CBS article
+        try:
+            taxonomies = parents_to_test.loc[index,'first_paragraph_without_stopwords'].split(' ')
+            matches = {x for x in taxonomies if x in content}
+            if len(matches)>0:
+                #print(matches)
+                matches_to_return_intro.append(parents_to_test.loc[index,'id'])
+            
+        except:
+            pass
+    return pd.Series([matches_to_return_sleutelwoorden,matches_to_return_BT_TT,matches_to_return_title,matches_to_return_intro])
