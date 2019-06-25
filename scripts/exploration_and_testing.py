@@ -1,5 +1,5 @@
 #%%
-
+import numpy as np
 import pandas as pd
 from pathlib import Path
 import os,sys
@@ -26,7 +26,7 @@ lowwindow = 2
 
 #%%
 
-p#arents = pd.read_csv(str(path / 'related_parents.csv'),index_col=0)
+#parents = pd.read_csv(str(path / 'related_parents.csv'),index_col=0)
 parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0) # With added columns by expand_parents_df
 children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
 
@@ -318,91 +318,129 @@ for window in windows:
 
 #%%
 
-#def sleutelwoorden_routine(row,parents):
-#    
-#    '''   
-#    
-#    Function to find matches with the child based on the sleutelwoorden of CBS articles
-#    Consists of multiple routines:
-#        - Match with sleutelwoorden and synonyms of the sleutelwoorden
-#        - Match with the BredereTermen and TopTermen of the sleutelwoorden
-#        - Match with sleutelwoorden based on the title of the CBS article
-#        - Match with sleutelwoorden based on the first paragraph of the CBS article
-#
-#    
-#    '''
-#    import datetime
-#    
-#    # First process the content
-#    content = row['content']
-#    content = re.sub(r'[^\w\s]','',content)                             # Remove punctuation
-#    
-#    # Make datetime objects from the dates
-#    date = pd.to_datetime(row['publish_date_date'])
-#    parents.loc[:,'publish_date_date'] = pd.to_datetime(parents['publish_date_date'])
-#    
-#    # Define datebounds
-#    up_date = date + datetime.timedelta(days=upwindow)
-#    low_date = date - datetime.timedelta(days=lowwindow)
-#    
-#    # Select parents within bounds
-#    parents_to_test = parents[(parents['publish_date_date']>low_date)&(parents['publish_date_date']<up_date)]
-#    
-#    matches_to_return_sleutelwoorden = []
-#    matches_to_return_BT_TT = []
-#    matches_to_return_title = []
-#    matches_to_return_intro = []
-#        
-#    for index in parents_to_test.index:
-#        # Match on sleutelwoorden and synonyms
-#        try:
-#            taxonomies = parents_to_test.loc[index,'taxonomies'].split(',')
-#            # extend list of sleutelwoorden, or append, depending on the size of the synonyms. 
-#            if len(parents_to_test.loc[index,'Gebruik_UF'].split(' '))>1:
-#                taxonomies.extend(parents_to_test.loc[index,'Gebruik_UF'].split(' '))
-#            else:
-#                taxonomies.append(parents_to_test.loc[index,'Gebruik_UF'].split(' '))
-#            matches = {x for x in taxonomies if x in content}
-#            if len(matches)>0:
-#                matches_to_return_sleutelwoorden.append(parents_to_test.loc[index,'id'])
-#            
-#        except:
-#            pass
-#        # Match on BredereTermen and TopTermen
-#        try:
-#            taxonomies = parents_to_test.loc[index,'BT_TT'].split(' ')
-#            matches = {x for x in taxonomies if x in content}
-#            if len(matches)>0:
-#                matches_to_return_BT_TT.append(parents_to_test.loc[index,'id'])
-#            
-#        except:
-#            pass
-#        # Match on CBS title
-#        try:
-#            taxonomies = parents_to_test.loc[index,'title_without_stopwords'].split(' ')
-#            matches = {x for x in taxonomies if x in content}
-#            if len(matches)>0:
-#                matches_to_return_title.append(parents_to_test.loc[index,'id'])
-#            
-#        except:
-#            pass
-#        # Match on first paragraph of CBS article
-#        try:
-#            taxonomies = parents_to_test.loc[index,'first_paragraph_without_stopwords'].split(' ')
-#            matches = {x for x in taxonomies if x in content}
-#            if len(matches)>0:
-#                #print(matches)
-#                matches_to_return_intro.append(parents_to_test.loc[index,'id'])
-#            
-#        except:
-#            pass
-#    return pd.Series([matches_to_return_sleutelwoorden,matches_to_return_BT_TT,matches_to_return_title,matches_to_return_intro])
+def sleutelwoorden_routine(row,parents):
     
-#test = children.loc[72607:72609,:]
-test = children.loc[19624:19624,:]
-test = children.head(5)
-#test=children
-test[['sleutelwoorden','BT_TT','title','intro']] = test.apply(sleutelwoorden_routine,args=(parents,),axis=1)
+    '''   
+    
+    Function to find matches with the child based on the sleutelwoorden of CBS articles
+    Consists of multiple routines:
+        - Match with sleutelwoorden and synonyms of the sleutelwoorden
+        - Match with the BredereTermen and TopTermen of the sleutelwoorden
+        - Match with sleutelwoorden based on the title of the CBS article
+        - Match with sleutelwoorden based on the first paragraph of the CBS article
+
+    
+    '''
+    import datetime
+    
+    # First process the content
+    content = row['content']
+    content = re.sub(r'[^\w\s]','',content)                             # Remove punctuation
+    
+    # Related_parents
+    related_parents = row['related_parents_str']
+    
+    # Make datetime objects from the dates
+    date = pd.to_datetime(row['publish_date_date'])
+    parents.loc[:,'publish_date_date'] = pd.to_datetime(parents['publish_date_date'])
+    
+    # Define datebounds
+    up_date = date + datetime.timedelta(days=upwindow)
+    low_date = date - datetime.timedelta(days=lowwindow)
+    
+    # Select parents within bounds
+    parents_to_test = parents[(parents['publish_date_date']>low_date)&(parents['publish_date_date']<up_date)]
+    
+    matches_to_return_sleutelwoorden = []
+    matches_to_return_BT_TT = []
+    matches_to_return_title = []
+    matches_to_return_intro = []
+    jaccard_similarity_match = [999]
+    len_matches_match = [999]
+    jaccard_similarity_nomatch = [999]
+    len_matches_nomatch = [999]
+        
+    for index in parents_to_test.index:
+        # Match on sleutelwoorden and synonyms
+        try:
+            taxonomies = parents_to_test.loc[index,'taxonomies'].split(',')
+            # extend list of sleutelwoorden, or append, depending on the size of the synonyms. 
+            if len(parents_to_test.loc[index,'Gebruik_UF'].split(' '))>1:
+                taxonomies.extend(parents_to_test.loc[index,'Gebruik_UF'].split(' '))
+            else:
+                taxonomies.append(parents_to_test.loc[index,'Gebruik_UF'].split(' '))
+            matches = {x for x in taxonomies if x in content}
+            if len(matches)>0:
+                matches_to_return_sleutelwoorden.append(parents_to_test.loc[index,'id'])
+            
+        except:
+            pass
+        # Match on BredereTermen and TopTermen
+        try:
+            taxonomies = parents_to_test.loc[index,'BT_TT'].split(' ')
+            matches = {x for x in taxonomies if x in content}
+            if len(matches)>0:
+                matches_to_return_BT_TT.append(parents_to_test.loc[index,'id'])
+            
+        except:
+            pass
+        # Match on CBS title
+        try:
+            taxonomies = parents_to_test.loc[index,'title_without_stopwords'].split(' ')
+            matches = {x for x in taxonomies if x in content}
+            if len(matches)>0:
+                matches_to_return_title.append(parents_to_test.loc[index,'id'])
+            
+        except:
+            pass
+        # Match on first paragraph of CBS article
+        try:
+            taxonomies = parents_to_test.loc[index,'first_paragraph_without_stopwords'].split(' ')
+            matches = {x for x in taxonomies if x in content}
+            if len(matches)>0:
+                #print(matches)
+                matches_to_return_intro.append(parents_to_test.loc[index,'id'])
+
+                if parents_to_test.loc[index,'id'].astype(str) in related_parents:
+                    #Standardised Jaccard Similarity index. Doesn't take length of newsarticle into account
+                    jaccard_similarity_match.append(len(matches)/len(list(set(taxonomies))))
+                    jaccard_similarity_match = np.mean(jaccard_similarity_match)
+                    #print(jaccard_similarity)
+                    len_matches_match.append(len(matches))
+                    len_matches_match = np.mean(len_matches_match)
+                else:
+                    #Standardised Jaccard Similarity index. Doesn't take length of newsarticle into account
+                    jaccard_similarity_nomatch.append(len(matches)/len(list(set(taxonomies))))
+                    jaccard_similarity_nomatch = np.mean(jaccard_similarity_nomatch)
+                    #print(jaccard_similarity)
+                    len_matches_nomatch.append(len(matches))
+                    len_matches_nomatch = np.mean(len_matches_nomatch)
+                    
+
+            
+        except:
+            pass
+    return pd.Series([matches_to_return_sleutelwoorden,
+                      matches_to_return_BT_TT,
+                      matches_to_return_title,
+                      matches_to_return_intro,
+                      jaccard_similarity_match,
+                      len_matches_match,
+                      jaccard_similarity_nomatch,
+                      len_matches_nomatch])
+
+test = children.head(100)
+
+#test = children.loc[19618:19619,:]
+#test = children
+test['related_parents_str'] = test['related_parents'].str.replace('matches/','').str.split(',')
+test[['sleutelwoorden',
+      'BT_TT','title',
+      'intro',
+      'jaccard_similarity_match',
+      'len_matches_match',
+      'jaccard_similarity_nomatch',
+      'len_matches_nomatch']] = test.apply(sleutelwoorden_routine,args=(parents,),axis=1)
   
 
 
@@ -411,8 +449,11 @@ for column in ['sleutelwoorden','BT_TT','title','intro']:
     print(column)
     bla = test[test[column].map(lambda d: len(d))>0]
     
-    blaa = bla[['sleutelwoorden','BT_TT','title','intro','related_parents']]
+    blaa = bla[['sleutelwoorden','BT_TT','title','intro','related_parents','jaccard_similarity_match','len_matches_match','jaccard_similarity_nomatch','len_matches_nomatch']]
     blaa['related_parents'] = blaa['related_parents'].str.replace('matches/','').str.split(',')
     mask = blaa['related_parents'].apply(lambda x: '158123' not in x)
     blaa['check'] = blaa.apply(correct, args=(column,),axis=1)
+    blaa['check'] = blaa['check'].astype(str)
     print(blaa[mask]['check'].value_counts())
+    print(blaa[mask][['check','jaccard_similarity_nomatch','len_matches_nomatch']].groupby('check').mean())
+    print(blaa[mask][['check','jaccard_similarity_nomatch','len_matches_nomatch']].groupby('check').std())
