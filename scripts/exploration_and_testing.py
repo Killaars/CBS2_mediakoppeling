@@ -355,10 +355,10 @@ def sleutelwoorden_routine(row,parents):
     matches_to_return_BT_TT = []
     matches_to_return_title = []
     matches_to_return_intro = []
-    jaccard_similarity_match = [999]
-    len_matches_match = [999]
-    jaccard_similarity_nomatch = [999]
-    len_matches_nomatch = [999]
+    jaccard_similarity_match = []
+    len_matches_match = []
+    jaccard_similarity_nomatch = []
+    len_matches_nomatch = []
         
     for index in parents_to_test.index:
         # Match on sleutelwoorden and synonyms
@@ -402,19 +402,28 @@ def sleutelwoorden_routine(row,parents):
                 matches_to_return_intro.append(parents_to_test.loc[index,'id'])
 
                 if parents_to_test.loc[index,'id'].astype(str) in related_parents:
-                    #Standardised Jaccard Similarity index. Doesn't take length of newsarticle into account
-                    jaccard_similarity_match.append(len(matches)/len(list(set(taxonomies))))
-                    jaccard_similarity_match = np.mean(jaccard_similarity_match)
-                    #print(jaccard_similarity)
-                    len_matches_match.append(len(matches))
-                    len_matches_match = np.mean(len_matches_match)
+                    # Check if list is empty (first match or no_match)
+                    if not jaccard_similarity_match:
+                        #Standardised Jaccard Similarity index. Doesn't take length of newsarticle into account
+                        jaccard_similarity_match = len(matches)/len(list(set(taxonomies)))
+                        #print(jaccard_similarity)
+                        len_matches_match = len(matches)
+                    else:
+                        #Standardised Jaccard Similarity index. Doesn't take length of newsarticle into account
+                        jaccard_similarity_match.append(len(matches)/len(list(set(taxonomies))))
+                        #print(jaccard_similarity)
+                        len_matches_match.append(len(matches))
                 else:
-                    #Standardised Jaccard Similarity index. Doesn't take length of newsarticle into account
-                    jaccard_similarity_nomatch.append(len(matches)/len(list(set(taxonomies))))
-                    jaccard_similarity_nomatch = np.mean(jaccard_similarity_nomatch)
-                    #print(jaccard_similarity)
-                    len_matches_nomatch.append(len(matches))
-                    len_matches_nomatch = np.mean(len_matches_nomatch)
+                    if not jaccard_similarity_nomatch:
+                        #Standardised Jaccard Similarity index. Doesn't take length of newsarticle into account
+                        jaccard_similarity_nomatch = len(matches)/len(list(set(taxonomies)))
+                        #print(jaccard_similarity)
+                        len_matches_nomatch = len(matches)
+                    else:
+                        #Standardised Jaccard Similarity index. Doesn't take length of newsarticle into account
+                        jaccard_similarity_nomatch.append(len(matches)/len(list(set(taxonomies))))
+                        #print(jaccard_similarity)
+                        len_matches_nomatch.append(len(matches))
                     
 
             
@@ -429,10 +438,10 @@ def sleutelwoorden_routine(row,parents):
                       jaccard_similarity_nomatch,
                       len_matches_nomatch])
 
-test = children.head(100)
+test = children.head(1000)
 
 #test = children.loc[19618:19619,:]
-#test = children
+test = children
 test['related_parents_str'] = test['related_parents'].str.replace('matches/','').str.split(',')
 test[['sleutelwoorden',
       'BT_TT','title',
@@ -455,5 +464,32 @@ for column in ['sleutelwoorden','BT_TT','title','intro']:
     blaa['check'] = blaa.apply(correct, args=(column,),axis=1)
     blaa['check'] = blaa['check'].astype(str)
     print(blaa[mask]['check'].value_counts())
-    print(blaa[mask][['check','jaccard_similarity_nomatch','len_matches_nomatch']].groupby('check').mean())
-    print(blaa[mask][['check','jaccard_similarity_nomatch','len_matches_nomatch']].groupby('check').std())
+# Remove empty lists from the jaccard column
+blaa['jaccard_similarity_match'][blaa['jaccard_similarity_match'].str.len() ==0] = 0
+blaa['len_matches_match'][blaa['len_matches_match'].str.len() ==0] = 0
+blaa['jaccard_similarity_match'] = blaa['jaccard_similarity_match'].astype(float)
+blaa['len_matches_match'] = blaa['len_matches_match'].astype(float)
+
+blaa['jaccard_similarity_nomatch'][blaa['jaccard_similarity_nomatch'].str.len() ==0] = 0
+blaa['len_matches_nomatch'][blaa['len_matches_nomatch'].str.len() ==0] = 0
+blaa['jaccard_similarity_nomatch'] = blaa['jaccard_similarity_nomatch'].astype(float)
+blaa['len_matches_nomatch'] = blaa['len_matches_nomatch'].astype(float)
+
+print(blaa[mask][['check','jaccard_similarity_match','len_matches_match']].groupby('check').mean())
+print(blaa[mask][['check','jaccard_similarity_match','len_matches_match']].groupby('check').std())
+print(blaa[mask][['check','jaccard_similarity_nomatch','len_matches_nomatch']].groupby('check').mean())
+print(blaa[mask][['check','jaccard_similarity_nomatch','len_matches_nomatch']].groupby('check').std())
+
+#%%
+def sort_list(list1, list2): 
+  
+    zipped_pairs = zip(list2, list1) 
+  
+    z = [x for _, x in sorted(zipped_pairs)] 
+      
+    return z
+
+list1 = [1,2,3,4,5,6,7]
+list2 = [0.45,0.89,0.11,0.62,0.41,0.65,0.99]
+
+print(sort_list(list1,list2))
