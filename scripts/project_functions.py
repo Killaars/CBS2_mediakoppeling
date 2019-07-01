@@ -74,7 +74,7 @@ def check_link(row, parents):
     # split the content in words
     splitted = content.split(' ')
     
-    to_return = []
+    matches_to_return = []
     # check the words for cbs site
     for split in splitted:
         if 'www.cbs.nl/' in split:
@@ -83,8 +83,8 @@ def check_link(row, parents):
                 link = link.translate({ord(i):None for i in '()'})
                 # puts them nicely in a list if any article has multiple links. 
                 for id in parents[parents['link'].str.contains(link)==True]['id'].values:
-                    to_return.append(id)
-    return to_return
+                    matches_to_return.append(id)
+    return matches_to_return
     
 
 def check_title(row, parents):

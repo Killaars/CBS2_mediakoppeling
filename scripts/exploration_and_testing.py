@@ -455,7 +455,7 @@ def sleutelwoorden_routine(row,parents):
                       highest_len_match,
                       list(map(int, highest_len_match_parent))]) # Change all elements in the list to integers
 
-test = children.head(100)
+test = children.head(1)
 
 #test = children.loc[19618:19619,:]
 #test = children
