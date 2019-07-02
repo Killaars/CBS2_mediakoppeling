@@ -28,10 +28,12 @@ def preprocessing(parents,children):
     parents.loc[:,'content'] = parents.loc[:,'content'].str.lower()
     parents.loc[:,'content'] = parents.loc[:,'content'].str.replace('-',' ')
     parents.loc[:,'content'] = parents.loc[:,'content'].str.replace('  ',' ')
+    parents['related_children'] = parents['related_children'].str.replace('matches/','').str.split(',')
     
     # Children
     children.loc[:,'title'] = children.loc[:,'title'].str.lower()
     children.loc[:,'content'] = children.loc[:,'content'].str.lower()
+    children['related_parents'] = children['related_parents'].str.replace('matches/','').str.split(',')
 #    children.loc[:,'content'] = children.loc[:,'content'].str.replace('-',' ') Breaks check_link
 #    children.loc[:,'content'] = children.loc[:,'content'].str.replace('  ',' ')
     

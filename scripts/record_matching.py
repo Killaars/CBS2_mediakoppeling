@@ -7,9 +7,13 @@ import re
 import nltk
 import datetime
 import recordlinkage
+from recordlinkage.index import Full
+
 nltk.download('punkt')
 
 from project_functions import preprocessing, check_sleutelwoorden,expand_parents_df,correct,sleutelwoorden_routine
+
+#%%
 
 #path = Path('/Users/Lars/Documents/CBS/CBS2_mediakoppeling/data/')
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
@@ -128,7 +132,6 @@ def find_BT_TT(row):
     content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
     try:
         taxonomies = row['BT_TT'].split(' ')
-        print(taxonomies)
         matches = {x for x in taxonomies if x in content}
         jaccard = len(matches)/len(list(set(taxonomies)))
         return pd.Series([jaccard, len(matches),matches])
@@ -154,6 +157,16 @@ def find_1st_paragraph_no_stop(row):
         return pd.Series([jaccard, len(matches),matches])
     except:
         pass
+    
+def determine_matches(row):
+    if str(row['parent_id']) in row['related_parents']:
+        return True
+    else:
+        return False
+    
+def date_comparison(row,offset,scale):    
+    diff = row['date_diff_days']
+    return 2**(-(diff-offset)/scale)
 
 parents_rel_columns = parents[['id',
                                'publish_date_date',
@@ -174,7 +187,7 @@ children_rel_columns = children[['id',
                                  'related_parents']]
 
 # subset of children
-subset = children_rel_columns.tail(1)
+subset = children_rel_columns.tail(1000)
 
 # preprocessing
 subset.loc[:,'publish_date_date'] = pd.to_datetime(subset.loc[:,'publish_date_date'])
@@ -211,8 +224,14 @@ features.rename(columns={'title_x': 'title_parent',
                          'publish_date_date_y': 'publish_date_date_child'}, inplace=True)
     
 # determine other features
+#features = features.tail(1)
 features['feature_whole_title'] = features.apply(find_title,axis=1)
 features[['sleutelwoorden_jaccard','sleutelwoorden_lenmatches','sleutelwoorden_matches']] = features.apply(find_sleutelwoorden_UF,axis=1)
 features[['BT_TT_jaccard','BT_TT_lenmatches','BT_TT_matches']] = features.apply(find_BT_TT,axis=1)
 features[['title_no_stop_jaccard','title_no_stop_lenmatches','title_no_stop_matches']] = features.apply(find_title_no_stop,axis=1)
 features[['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches','1st_paragraph_no_stop_matches']] = features.apply(find_1st_paragraph_no_stop,axis=1)
+features['match'] = features.apply(determine_matches,axis=1)
+features['date_diff_days'] = abs(features['publish_date_date_parent']-features['publish_date_date_child']).dt.days.astype(float)
+offset = 0
+scale = 7
+features['date_diff_score'] = features.apply(date_comparison,args=(offset,scale),axis=1)
