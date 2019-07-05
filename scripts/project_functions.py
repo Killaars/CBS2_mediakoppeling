@@ -34,6 +34,7 @@ def preprocessing(parents,children):
     children.loc[:,'title'] = children.loc[:,'title'].str.lower()
     children.loc[:,'content'] = children.loc[:,'content'].str.lower()
     children['related_parents'] = children['related_parents'].str.replace('matches/','').str.split(',')
+    children.loc[:,'publish_date_date'] = pd.to_datetime(children.loc[:,'publish_date_date'])
 #    children.loc[:,'content'] = children.loc[:,'content'].str.replace('-',' ') Breaks check_link
 #    children.loc[:,'content'] = children.loc[:,'content'].str.replace('  ',' ')
     
