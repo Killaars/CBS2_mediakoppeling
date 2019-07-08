@@ -149,10 +149,11 @@ children_rel_columns = children[['id',
                                  'related_parents']]
 
 date_low = '2019-03-01'
-parents_rel_columns = parents_rel_columns[\
-    (parents_rel_columns['publish_date_date']>date_low)]
-children_rel_columns = children_rel_columns[\
-    (children_rel_columns['publish_date_date']>date_low)]
+date_up = '2019-05-01'
+parents_rel_columns = parents_rel_columns[(parents_rel_columns['publish_date_date']>date_low)&
+                                          (parents_rel_columns['publish_date_date']<date_up)]
+children_rel_columns = children_rel_columns[(children_rel_columns['publish_date_date']>date_low)&
+                                            (children_rel_columns['publish_date_date']<date_up)]
 #%%
 # subset of children
 subset = children_rel_columns
@@ -192,7 +193,7 @@ features.rename(columns={'title_x': 'title_parent',
                          'title_y': 'title_child',
                          'content_y': 'content_child',
                          'publish_date_date_y': 'publish_date_date_child'}, inplace=True)
-#%%Singlecore
+#Singlecore
     
 # determine other features
 #features = features.tail(1)
@@ -386,52 +387,84 @@ for column in feature_columns:
     plt.show()
     
 #%% Build classification trees
-features = pd.read_csv(str(path / 'features_march_to_end.csv'),index_col=0)
+features = pd.read_csv(str(path / 'features_march_april_2019.csv'),index_col=0)
+#%% or
+
+features = pd.read_csv(str(path / 'features_march_april_2018.csv'),index_col=0)
+
 
 #%%
+
+def resultClassifier(row):
+    if (row['label']==row['prediction'] and row['label'] == True):
+        return 'TP'
+    if (row['label']==row['prediction'] and row['label'] == False):
+        return 'TN'
+    if (row['label']!=row['prediction'] and row['label'] == True):
+        return 'FN'
+    if (row['label']!=row['prediction'] and row['label'] == False):
+        return 'FP'
+
 # Load libraries
 from sklearn.tree import DecisionTreeClassifier # Import Decision Tree Classifier
 from sklearn.model_selection import train_test_split # Import train_test_split function
 from sklearn import metrics #Import scikit-learn metrics module for accuracy calculation
 
-#split dataset in features and target variable
-feature_cols = ['feature_link_score',
-                'feature_whole_title',
-                'sleutelwoorden_jaccard',
-                'sleutelwoorden_lenmatches',
-                'BT_TT_jaccard',
-                'BT_TT_lenmatches',
-                'title_no_stop_jaccard',
-                'title_no_stop_lenmatches',
-                '1st_paragraph_no_stop_jaccard',
-                '1st_paragraph_no_stop_lenmatches',
-                'date_diff_score']
-X = features[feature_cols] # Features
-X[X.isna()] = 0
+def treeFunction(features,output):
+    #split dataset in features and target variable
+    feature_cols = ['feature_link_score',
+                    'feature_whole_title',
+                    'sleutelwoorden_jaccard',
+                    'sleutelwoorden_lenmatches',
+                    'BT_TT_jaccard',
+                    'BT_TT_lenmatches',
+                    'title_no_stop_jaccard',
+                    'title_no_stop_lenmatches',
+                    '1st_paragraph_no_stop_jaccard',
+                    '1st_paragraph_no_stop_lenmatches',
+                    'date_diff_score']
+    X = features[feature_cols] # Features
+    X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
+    
+    y = features['match'] # Target variable
+    
+    # Split dataset into training set and test set
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+    
+    # Create Decision Tree classifer object
+    weights = {0: 1, 1: 1}
+    #clf = DecisionTreeClassifier(criterion="gini", max_depth = 4,class_weight = 'balanced', min_impurity_decrease = 0.0001)
+    clf = DecisionTreeClassifier(criterion="gini", min_impurity_decrease = 0.00001, max_depth = 5, class_weight = weights)
+    
+    # Train Decision Tree Classifer
+    clf = clf.fit(X_train,y_train)
+    
+    #Predict the response for test dataset
+    y_pred = clf.predict(X_test)
+    results = pd.DataFrame({'label': y_test.values,'prediction' : y_pred},index = y_test.index)
+    results['confusion_matrix'] = results.apply(resultClassifier,axis=1)
+    results_counts = results['confusion_matrix'].value_counts()
+    
+    print(results_counts)
+    print('Precision: ',(results_counts.loc['TP'])/(results_counts.loc['TP']+results_counts.loc['FP']))
+    print('Recall: ',(results_counts.loc['TP'])/(results_counts.loc['TP']+results_counts.loc['FN']))
+    print("Accuracy: ",metrics.accuracy_score(y_test, y_pred))
+    # 99,40163973375344% of all data is class 0, so above this number is good
+    
+    from sklearn.tree import export_graphviz
+    from sklearn.externals.six import StringIO  
+    import pydotplus
+    
+    dot_data = StringIO()
+    export_graphviz(clf, out_file=dot_data,  
+                    filled=True, rounded=True,
+                    special_characters=True,feature_names = feature_cols,class_names=['0','1'])
+    graph = pydotplus.graph_from_dot_data(dot_data.getvalue())  
+    graph.write_png(output)
 
-y = features['match'] # Target variable
+#%% Build classification trees
+#features = pd.read_csv(str(path / 'features_march_april_2019.csv'),index_col=0)
+treeFunction(features,'2019.png')
 
-# Split dataset into training set and test set
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
-
-# Create Decision Tree classifer object
-clf = DecisionTreeClassifier(criterion="entropy", max_depth=3)
-
-# Train Decision Tree Classifer
-clf = clf.fit(X_train,y_train)
-
-#Predict the response for test dataset
-y_pred = clf.predict(X_test)
-
-print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
-#%%
-from sklearn.tree import export_graphviz
-from sklearn.externals.six import StringIO  
-import pydotplus
-
-dot_data = StringIO()
-export_graphviz(clf, out_file=dot_data,  
-                filled=True, rounded=True,
-                special_characters=True,feature_names = feature_cols,class_names=['0','1'])
-graph = pydotplus.graph_from_dot_data(dot_data.getvalue())  
-graph.write_png('tree.png')
+features = pd.read_csv(str(path / 'features_march_april_2018.csv'),index_col=0)
+treeFunction(features,'2018.png')
