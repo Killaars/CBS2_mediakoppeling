@@ -434,7 +434,7 @@ def treeFunction(features,output):
     # Create Decision Tree classifer object
     weights = {0: 1, 1: 1}
     #clf = DecisionTreeClassifier(criterion="gini", max_depth = 4,class_weight = 'balanced', min_impurity_decrease = 0.0001)
-    clf = DecisionTreeClassifier(criterion="gini", min_impurity_decrease = 0.00001, max_depth = 5, class_weight = weights)
+    clf = DecisionTreeClassifier(criterion="gini", max_depth = 5, class_weight = weights)
     
     # Train Decision Tree Classifer
     clf = clf.fit(X_train,y_train)
@@ -463,8 +463,91 @@ def treeFunction(features,output):
     graph.write_png(output)
 
 #%% Build classification trees
-#features = pd.read_csv(str(path / 'features_march_april_2019.csv'),index_col=0)
+features = pd.read_csv(str(path / 'features_march_april_2019.csv'),index_col=0)
 treeFunction(features,'2019.png')
 
 features = pd.read_csv(str(path / 'features_march_april_2018.csv'),index_col=0)
 treeFunction(features,'2018.png')
+
+#%%
+# Get some classifiers to evaluate
+from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import BaggingClassifier, ExtraTreesClassifier, RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import RidgeClassifier
+from sklearn.svm import SVC
+seed = 1075
+np.random.seed(seed)
+
+feature_cols = ['feature_link_score',
+                'feature_whole_title',
+                'sleutelwoorden_jaccard',
+                'sleutelwoorden_lenmatches',
+                'BT_TT_jaccard',
+                'BT_TT_lenmatches',
+                'title_no_stop_jaccard',
+                'title_no_stop_lenmatches',
+                '1st_paragraph_no_stop_jaccard',
+                '1st_paragraph_no_stop_lenmatches',
+                'date_diff_score']
+X = features[feature_cols] # Features
+X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
+
+y = features['match'] # Target variable
+
+# Split dataset into training set and test set
+#X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+
+# Create classifiers
+rf = RandomForestClassifier()
+et = ExtraTreesClassifier()
+knn = KNeighborsClassifier()
+svc = SVC()
+rg = RidgeClassifier()
+#clf_array = [rf, et, knn, svc, rg]
+clf_array = [rf, et]
+for clf in clf_array:
+    vanilla_scores = cross_val_score(clf, X, y, cv=10, n_jobs=-1)
+    bagging_clf = BaggingClassifier(clf, 
+       max_samples=0.4, max_features=10, random_state=seed)
+    bagging_scores = cross_val_score(bagging_clf, X, y, cv=10, 
+       n_jobs=-1)
+    
+    print("Mean of: {1:.3f}, std: (+/-) {2:.3f} [{0}]"  
+                       .format(clf.__class__.__name__, 
+                       vanilla_scores.mean(), vanilla_scores.std()))
+    print("Mean of: {1:.3f}, std: (+/-) {2:.3f} [Bagging {0}]\n"
+                       .format(clf.__class__.__name__, 
+                        bagging_scores.mean(), bagging_scores.std()))
+    
+#%%
+# Import the model we are using
+from sklearn.model_selection import train_test_split # Import train_test_split function
+from sklearn.ensemble import RandomForestRegressor
+
+# Split dataset into training set and test set
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+# Instantiate model with 1000 decision trees
+rf = RandomForestRegressor(n_estimators = 1000, random_state = 42)
+# Train the model on training data
+rf.fit(X_train, y_train)
+
+#Predict the response for test dataset
+y_pred = rf.predict(X_test)
+results = pd.DataFrame({'label': y_test.values,'prediction' : y_pred},index = y_test.index)
+results['confusion_matrix'] = results.apply(resultClassifier,axis=1)
+results_counts = results['confusion_matrix'].value_counts()
+
+print(results_counts)
+print('Precision: ',(results_counts.loc['TP'])/(results_counts.loc['TP']+results_counts.loc['FP']))
+print('Recall: ',(results_counts.loc['TP'])/(results_counts.loc['TP']+results_counts.loc['FN']))
+#print("Accuracy: ",metrics.accuracy_score(y_test, y_pred))
+
+
+importances = list(rf.feature_importances_)
+
+feature_importances = [(feature, round(importance, 2)) for feature, importance in zip(feature_cols, importances)]
+# Sort the feature importances by most important first
+feature_importances = sorted(feature_importances, key = lambda x: x[1], reverse = True)
+# Print out the feature and importances 
+[print('Variable: {:20} Importance: {}'.format(*pair)) for pair in feature_importances]
