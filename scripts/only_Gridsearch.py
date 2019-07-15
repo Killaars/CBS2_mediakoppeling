@@ -7,6 +7,7 @@ from sklearn import svm
 from sklearn.model_selection import train_test_split
 
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
+path = Path('/data/lkls/CBS_2_mediakoppeling/data/solr/')
 
 print('Loading features...')
 features = pd.read_csv(str(path / 'features_march_april_2019.csv'),index_col=0)
@@ -36,8 +37,8 @@ parameter_candidates = [
   {'C': [1, 10, 100, 1000], 'gamma': [0.1, 0.01, 0.001, 0.0001], 'kernel': ['rbf']},
 ]
 print('Selecting X and y mini...')
-X_train_mini = X_train[:1000]
-y_train_mini = y_train[:1000]
+X_train_mini = X_train
+y_train_mini = y_train
 
 # Create a classifier object with the classifier and parameter candidates
 print('Doing GridSearchCV...')
