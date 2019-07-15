@@ -395,7 +395,18 @@ features = pd.read_csv(str(path / 'features_march_april_2018.csv'),index_col=0)
 
 #%%
 
-def resultClassifier(row):
+def resultClassifierfloat(row):
+    threshold = 0.5
+    if (row['prediction'] > threshold and row['label'] == True):
+        return 'TP'
+    if (row['prediction'] < threshold and row['label'] == False):
+        return 'TN'
+    if (row['prediction'] < threshold and row['label'] == True):
+        return 'FN'
+    if (row['prediction'] > threshold and row['label'] == False):
+        return 'FP'
+    
+def resultClassifierint(row):
     if (row['label']==row['prediction'] and row['label'] == True):
         return 'TP'
     if (row['label']==row['prediction'] and row['label'] == False):
@@ -404,7 +415,7 @@ def resultClassifier(row):
         return 'FN'
     if (row['label']!=row['prediction'] and row['label'] == False):
         return 'FP'
-
+#%%
 # Load libraries
 from sklearn.tree import DecisionTreeClassifier # Import Decision Tree Classifier
 from sklearn.model_selection import train_test_split # Import train_test_split function
@@ -496,7 +507,7 @@ X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
 y = features['match'] # Target variable
 
 # Split dataset into training set and test set
-#X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
 
 # Create classifiers
 rf = RandomForestClassifier()
@@ -528,14 +539,14 @@ from sklearn.ensemble import RandomForestRegressor
 # Split dataset into training set and test set
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
 # Instantiate model with 1000 decision trees
-rf = RandomForestRegressor(n_estimators = 1000, random_state = 42)
+rf = RandomForestRegressor(n_estimators = 100, random_state = 42,max_depth=3)
 # Train the model on training data
 rf.fit(X_train, y_train)
 
 #Predict the response for test dataset
 y_pred = rf.predict(X_test)
 results = pd.DataFrame({'label': y_test.values,'prediction' : y_pred},index = y_test.index)
-results['confusion_matrix'] = results.apply(resultClassifier,axis=1)
+results['confusion_matrix'] = results.apply(resultClassifierfloat,axis=1)
 results_counts = results['confusion_matrix'].value_counts()
 
 print(results_counts)
@@ -551,3 +562,59 @@ feature_importances = [(feature, round(importance, 2)) for feature, importance i
 feature_importances = sorted(feature_importances, key = lambda x: x[1], reverse = True)
 # Print out the feature and importances 
 [print('Variable: {:20} Importance: {}'.format(*pair)) for pair in feature_importances]
+
+#%%
+#Import svm model
+from sklearn import svm
+
+#Create a svm Classifier
+clf = svm.SVC(kernel='rbf') # Linear Kernel
+
+#Train the model using the training sets
+clf.fit(X_train, y_train)
+
+#Predict the response for test dataset
+y_pred = clf.predict(X_test)
+#%%
+results = pd.DataFrame({'label': y_test.values,'prediction' : y_pred},index = y_test.index)
+results['confusion_matrix'] = results.apply(resultClassifierint,axis=1)
+results_counts = results['confusion_matrix'].value_counts()
+
+print(results_counts)
+
+#Import scikit-learn metrics module for accuracy calculation
+from sklearn import metrics
+
+# Model Accuracy: how often is the classifier correct?
+print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
+
+# Model Precision: what percentage of positive tuples are labeled as such?
+print("Precision:",metrics.precision_score(y_test, y_pred))
+
+# Model Recall: what percentage of positive tuples are labelled as such?
+print("Recall:",metrics.recall_score(y_test, y_pred))
+
+#%% Gridsearch
+from sklearn.model_selection import GridSearchCV
+from sklearn import svm
+parameter_candidates = [
+  {'C': [1, 10, 100, 1000], 'kernel': ['linear']},
+  {'C': [1, 10, 100, 1000], 'gamma': [0.1, 0.01, 0.001, 0.0001], 'kernel': ['rbf']},
+]
+
+X_train_mini = X_train
+y_train_mini = y_train
+
+# Create a classifier object with the classifier and parameter candidates
+clf = GridSearchCV(estimator=svm.SVC(), param_grid=parameter_candidates, n_jobs=-1)
+
+# Train the classifier on data1's feature and target data
+clf.fit(X_train_mini, y_train_mini)   
+
+# View the accuracy score
+print('Best score:', clf.best_score_) 
+
+# View the best parameters for the model found using grid search
+print('Best C:',clf.best_estimator_.C) 
+print('Best Kernel:',clf.best_estimator_.kernel)
+print('Best Gamma:',clf.best_estimator_.gamma)
