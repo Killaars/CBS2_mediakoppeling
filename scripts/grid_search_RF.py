@@ -99,3 +99,8 @@ base_model = RandomForestClassifier(n_estimators = 10, random_state = 42)
 base_model.fit(X_train_mini, y_train_mini)
 
 evaluation(base_model, 'default_random_forest', X_test, y_test)
+
+import cPickle
+# save the classifier
+with open('best_random_forest_classifier.pkl', 'wb') as fid:
+    cPickle.dump(best_grid, fid)
