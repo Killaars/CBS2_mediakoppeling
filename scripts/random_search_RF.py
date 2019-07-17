@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
-#path = Path('/data/lkls/CBS_2_mediakoppeling/data/solr/')
+path = Path('/data/lkls/CBS_2_mediakoppeling/data/solr/')
 
 def resultClassifierfloat(row):
     threshold = 0.5
@@ -71,8 +71,8 @@ y = features['match'] # Target variable
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
 
 print('Selecting X and y mini...')
-X_train_mini = X_train[:1000]
-y_train_mini = y_train[:1000]
+X_train_mini = X_train
+y_train_mini = y_train
 
 # Number of trees in random forest
 n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
@@ -105,7 +105,7 @@ random_grid = {'n_estimators': n_estimators,
 rf = RandomForestClassifier()
 # Random search of parameters, using 3 fold cross validation, 
 # search across 100 different combinations, and use all available cores
-rf_random = RandomizedSearchCV(estimator = rf, param_distributions = random_grid, n_iter = 3, cv = 3, verbose=2, random_state=42, n_jobs = -1)
+rf_random = RandomizedSearchCV(estimator = rf, param_distributions = random_grid, n_iter = 150, cv = 3, verbose=2, random_state=42, n_jobs = -1)
 # Fit the random search model
 rf_random.fit(X_train_mini, y_train_mini)
 print(rf_random.best_params_)
