@@ -10,6 +10,7 @@ from sklearn import metrics
 
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
 path = Path('/data/lkls/CBS_2_mediakoppeling/data/solr/')
+path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 
 def resultClassifierfloat(row):
     threshold = 0.5
@@ -75,10 +76,16 @@ y_train_mini = y_train
 
 # Create the parameter grid based on the values found by the random search
 #{'n_estimators': 2000, 'min_samples_split': 2, 'min_samples_leaf': 1, 'max_features': 'auto', 'max_depth': 20, 'class_weight': None, 'bootstrap': True}
-param_grid = {'n_estimators': [1850,1900,1950,2000,2050,2100,2500,3000],
+#Found by first gridsearch, scored lower
+#{'n_estimators': 2050, 'min_samples_split': 2, 'min_samples_leaf': 1, 'max_features': 'auto', 'max_depth': 20, 'class_weight': None, 'bootstrap': True}
+
+
+param_grid = {'n_estimators': [2000,2030,2050],
                'max_features': ['auto'],
-               'max_depth': [15,20,25],
-               'min_samples_split': [2,3,5],
+               'criterion': ['gini','entropy'],
+               'max_depth': [18,19,20,21,22],
+               'min_samples_split': [2],
+               'max_leaf_nodes' : [None,8,32,64,128],
                'min_samples_leaf': [1],
                'bootstrap': [True],
                'class_weight':[None]}
@@ -88,7 +95,7 @@ param_grid = {'n_estimators': [1850,1900,1950,2000,2050,2100,2500,3000],
 rf = RandomForestClassifier()
 # Random search of parameters, using 3 fold cross validation, 
 # search across 100 different combinations, and use all available cores
-grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, verbose=2, n_jobs = -1)
+grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, verbose=1, n_jobs = -1)
 # Fit the random search model
 grid_search.fit(X_train_mini, y_train_mini)
 print(grid_search.best_params_)

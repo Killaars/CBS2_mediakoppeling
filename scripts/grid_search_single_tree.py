@@ -11,6 +11,7 @@ from sklearn import metrics
 
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
 #path = Path('/data/lkls/CBS_2_mediakoppeling/data/solr/')
+path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 
 def resultClassifierfloat(row):
     threshold = 0.5
@@ -71,20 +72,20 @@ y = features['match'] # Target variable
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
 
 print('Selecting X and y mini...')
-X_train_mini = X_train[:1000]
-y_train_mini = y_train[:1000]
+X_train_mini = X_train
+y_train_mini = y_train
 
 param_grid = {'criterion': ['gini','entropy'],
               'splitter' : ['best','random'],
-              'max_depth' : [None,3,5,7,10,20,30,50],
-              'min_samples_split': [2,3,5,10],
+              'max_depth' : [None,5,10,20,50],
+              'min_samples_split': [2,5,10],
               'min_samples_leaf': [1,2,4],
               'max_leaf_nodes' : [None,8,32,64,128],
               'min_impurity_decrease' : [0.1,0.01,0.001,0.0001,0.00001],
-              'class_weight' : [None,{0: 1, 1: 1},{0: 1, 1: 10},{0: 1, 1: 100},"balanced"]}
+              'class_weight' : [None,{0: 1, 1: 10},"balanced"]}
 
 rf = DecisionTreeClassifier()
-grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, verbose=2, n_jobs = -1)
+grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, verbose=1, n_jobs = -1)
 # Fit the random search model
 grid_search.fit(X_train_mini, y_train_mini)
 print(grid_search.best_params_)
