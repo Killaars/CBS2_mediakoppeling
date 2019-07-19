@@ -85,7 +85,7 @@ param_grid = {'criterion': ['gini','entropy'],
               'class_weight' : [None,{0: 1, 1: 10},"balanced"]}
 
 rf = DecisionTreeClassifier()
-grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, verbose=1, n_jobs = -1)
+grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, verbose=1, n_jobs = 40)
 # Fit the random search model
 grid_search.fit(X_train_mini, y_train_mini)
 print(grid_search.best_params_)
