@@ -99,41 +99,39 @@ import pickle
 with open('best_ADA_nobase_classifier.pkl', 'wb') as fid:
     pickle.dump(best_grid, fid)
     
-#%% grid search ADA rfbase
-# Initialise RF based on best parameters found by RF gridsearch
-rf = RandomForestClassifier(n_estimators = 2050,
-                            max_depth = 20,
-                            min_samples_split = 2,
-                            min_samples_leaf = 1)
-
-# parameters for ADA boost
-param_grid = {'n_estimators': [10,30,50,70,90],
-              'base_estimator' : [rf],
-              'learning_rate' : [0.01,0.1,1,10]}
-
-ada = AdaBoostClassifier()
-grid_search = GridSearchCV(estimator = ada, param_grid = param_grid, cv = 3, verbose=1, n_jobs = -1)
-# Fit the random search model
-grid_search.fit(X_train_mini, y_train_mini)
-print(grid_search.best_params_)
-best_grid = grid_search.best_estimator_
-evaluation(best_grid, 'best_grid_ada_rfbase', X_test, y_test)
-
-base_model = AdaBoostClassifier(base_estimator=rf)
-base_model.fit(X_train_mini, y_train_mini)
-
-evaluation(base_model, 'default_ada_rfbase', X_test, y_test)
-#%%
-import pickle
-# save the classifier
-with open('best_ADA_rfbase_classifier.pkl', 'wb') as fid:
-    pickle.dump(best_grid, fid)
+##%% grid search ADA rfbase
+## Initialise RF based on best parameters found by RF gridsearch
+#rf = RandomForestClassifier(n_estimators = 2050,
+#                            max_depth = 20,
+#                            min_samples_split = 2,
+#                            min_samples_leaf = 1)
+#
+## parameters for ADA boost
+#param_grid = {'n_estimators': [10,30,50,70,90],
+#              'base_estimator' : [rf],
+#              'learning_rate' : [0.01,0.1,1,10]}
+#
+#ada = AdaBoostClassifier()
+#grid_search = GridSearchCV(estimator = ada, param_grid = param_grid, cv = 3, verbose=1, n_jobs = -1)
+## Fit the random search model
+#grid_search.fit(X_train_mini, y_train_mini)
+#print(grid_search.best_params_)
+#best_grid = grid_search.best_estimator_
+#evaluation(best_grid, 'best_grid_ada_rfbase', X_test, y_test)
+#
+#base_model = AdaBoostClassifier(base_estimator=rf)
+#base_model.fit(X_train_mini, y_train_mini)
+#
+#evaluation(base_model, 'default_ada_rfbase', X_test, y_test)
+##%%
+#import pickle
+## save the classifier
+#with open('best_ADA_rfbase_classifier.pkl', 'wb') as fid:
+#    pickle.dump(best_grid, fid)
 
 #%% grid search ADA treebase    
 # Initialise RF based on best parameters found by RF gridsearch
-rf = DecisionTreeClassifier(max_depth = 20,
-                            min_samples_split = 2,
-                            min_samples_leaf = 1)
+rf = DecisionTreeClassifie()
 
 # parameters for ADA boost
 param_grid = {'n_estimators': [10,30,50,70,90],
@@ -161,10 +159,10 @@ with open('best_ADA_treebase_classifier.pkl', 'wb') as fid:
 #%% grid search GradienBoosting    
 param_grid = {'criterion': ['friedman_mse','mse'],
               'n_estimators': [20,75,100,125,200],
-              'max_depth' : [None,3,5,7,10,20,30,50],
-              'min_samples_split': [2,3,5,10],
+              'max_depth' : [None,5,10,20,30,50],
+              'min_samples_split': [2,3,5],
               'min_samples_leaf': [1,2,4],
-              'max_leaf_nodes' : [None,8,32,64,128],
+              'max_leaf_nodes' : [None,32,64],
               'min_impurity_decrease' : [0.1,0.01,0.001,0.0001,0.00001]}
 
 rf = GradientBoostingClassifier()

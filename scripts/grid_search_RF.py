@@ -83,9 +83,9 @@ y_train_mini = y_train
 param_grid = {'n_estimators': [2000,2030,2050],
                'max_features': ['auto'],
                'criterion': ['gini','entropy'],
-               'max_depth': [18,19,20,21,22],
+               'max_depth': [18,20,22],
                'min_samples_split': [2],
-               'max_leaf_nodes' : [None,8,32,64,128],
+               'max_leaf_nodes' : [None,32,64],
                'min_samples_leaf': [1],
                'bootstrap': [True],
                'class_weight':[None]}
