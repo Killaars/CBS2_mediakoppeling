@@ -10,8 +10,8 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
-#path = Path('/data/lkls/CBS_2_mediakoppeling/data/solr/')
-path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
+path = Path('/data/lkls/CBS_2_mediakoppeling/data/solr/')
+#path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 
 def resultClassifierfloat(row):
     threshold = 0.5
@@ -80,9 +80,9 @@ param_grid = {'criterion': ['gini','entropy'],
               'max_depth' : [None,5,10,20,50],
               'min_samples_split': [2,5,10],
               'min_samples_leaf': [1,2,4],
-              'max_leaf_nodes' : [None,8,32,64,128],
+              'max_leaf_nodes' : [None,32,64],
               'min_impurity_decrease' : [0.1,0.01,0.001,0.0001,0.00001],
-              'class_weight' : [None,{0: 1, 1: 10},"balanced"]}
+              'class_weight' : [None]}
 
 rf = DecisionTreeClassifier()
 grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, verbose=1, n_jobs = 40)
