@@ -107,7 +107,7 @@ base_model.fit(X_train_mini, y_train_mini)
 
 evaluation(base_model, 'default_random_forest', X_test, y_test)
 
-import cPickle
+import pickle
 # save the classifier
 with open('best_random_forest_classifier.pkl', 'wb') as fid:
-    cPickle.dump(best_grid, fid)
+    pickle.dump(best_grid, fid)
