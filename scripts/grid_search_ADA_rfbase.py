@@ -71,11 +71,11 @@ y = features['match'] # Target variable
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
 
 print('Selecting X and y mini...')
-X_train_mini = X_train[:1000]
-y_train_mini = y_train[:1000]
+X_train_mini = X_train
+y_train_mini = y_train
 
 # Initialise RF based on best parameters found by RF gridsearch
-rf = RandomForestClassifier(n_estimators = 1000,
+rf = RandomForestClassifier(n_estimators = 2030,
                             max_depth = 20,
                             min_samples_split = 2,
                             min_samples_leaf = 1)
@@ -86,7 +86,7 @@ param_grid = {'n_estimators': [10,30,50,70,90],
               'learning_rate' : [0.01,0.1,1,10]}
 
 ada = AdaBoostClassifier()
-grid_search = GridSearchCV(estimator = ada, param_grid = param_grid, cv = 3, verbose=2, n_jobs = -1)
+grid_search = GridSearchCV(estimator = ada, param_grid = param_grid, cv = 3, verbose=1, n_jobs = -1)
 # Fit the random search model
 grid_search.fit(X_train_mini, y_train_mini)
 print(grid_search.best_params_)
