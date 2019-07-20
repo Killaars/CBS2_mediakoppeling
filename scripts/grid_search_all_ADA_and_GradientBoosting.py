@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
-#path = Path('/data/lkls/CBS_2_mediakoppeling/data/solr/')
+path = Path('/data/lkls/CBS_2_mediakoppeling/data/solr/')
 
 def resultClassifierfloat(row):
     threshold = 0.5
@@ -73,8 +73,8 @@ y = features['match'] # Target variable
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
 
 print('Selecting X and y mini...')
-X_train_mini = X_train[:1000]
-y_train_mini = y_train[:1000]
+X_train_mini = X_train
+y_train_mini = y_train
 
 
 
@@ -131,7 +131,7 @@ with open('best_ADA_nobase_classifier.pkl', 'wb') as fid:
 
 #%% grid search ADA treebase    
 # Initialise RF based on best parameters found by RF gridsearch
-rf = DecisionTreeClassifie()
+rf = DecisionTreeClassifier()
 
 # parameters for ADA boost
 param_grid = {'n_estimators': [10,30,50,70,90],
