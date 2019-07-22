@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
@@ -73,21 +74,23 @@ print('Selecting X and y mini...')
 X_train_mini = X_train[:1000]
 y_train_mini = y_train[:1000]
 
+#%% grid search GradienBoosting    
 param_grid = {'criterion': ['friedman_mse','mse'],
               'n_estimators': [20,75,100,125,200],
-              'max_depth' : [None,3,5,7,10,20,30,50],
-              'min_samples_split': [2,3,5,10],
+              'max_depth' : [None,5,10,20,30,50],
+              'min_samples_split': [2,3,5],
               'min_samples_leaf': [1,2,4],
-              'max_leaf_nodes' : [None,8,32,64,128],
+              'max_leaf_nodes' : [None,32,64],
               'min_impurity_decrease' : [0.1,0.01,0.001,0.0001,0.00001]}
 
 rf = GradientBoostingClassifier()
-grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, verbose=2, n_jobs = -1)
+rf_random = RandomizedSearchCV(estimator = rf, param_distributions = param_grid, n_iter = 333, cv = 3, verbose=1, random_state=42, n_jobs = -1)
+
 # Fit the random search model
-grid_search.fit(X_train_mini, y_train_mini)
-print(grid_search.best_params_)
-best_grid = grid_search.best_estimator_
-evaluation(best_grid, 'best_grid_gradientboost', X_test, y_test)
+rf_random.fit(X_train_mini, y_train_mini)
+print(rf_random.best_params_)
+best_grid = rf_random.best_estimator_
+evaluation(best_grid, 'best_random_grid_gradientboost', X_test, y_test)
 
 base_model = GradientBoostingClassifier()
 base_model.fit(X_train_mini, y_train_mini)
