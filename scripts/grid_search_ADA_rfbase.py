@@ -11,6 +11,7 @@ from sklearn import metrics
 
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
 #path = Path('/data/lkls/CBS_2_mediakoppeling/data/solr/')
+path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 
 def resultClassifierfloat(row):
     threshold = 0.5
@@ -81,12 +82,12 @@ rf = RandomForestClassifier(n_estimators = 2030,
                             min_samples_leaf = 1)
 
 # parameters for ADA boost
-param_grid = {'n_estimators': [10,30,50,70,90],
+param_grid = {'n_estimators': [30,50,90],
               'base_estimator' : [rf],
-              'learning_rate' : [0.01,0.1,1,10]}
+              'learning_rate' : [0.1,1,10]}
 
 ada = AdaBoostClassifier()
-grid_search = GridSearchCV(estimator = ada, param_grid = param_grid, cv = 3, verbose=1, n_jobs = -1)
+grid_search = GridSearchCV(estimator = ada, param_grid = param_grid, cv = 3, verbose=1, n_jobs = 40)
 # Fit the random search model
 grid_search.fit(X_train_mini, y_train_mini)
 print(grid_search.best_params_)
