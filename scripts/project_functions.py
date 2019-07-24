@@ -291,7 +291,7 @@ def find_synoniemen(row,taxonomie_df):
     BT_TT = [w for w in temp if not w in stop_words]
     return (' '.join(Gebruik_UF),' '.join(BT_TT))
 
-def select_and_prepare_first_paragraph_of_CBS_article(row):
+def select_and_prepare_first_paragraph_of_CBS_article(row, column = 'content'):
     '''
     Function to find the first paragraph of the CBS article, remove stopwords and return it as a string.
     '''
@@ -301,7 +301,7 @@ def select_and_prepare_first_paragraph_of_CBS_article(row):
     stop_words = set(stopwords.words('dutch'))
     
     filtered_intro = ''                                                 # Set as empty string for rows without content
-    content = row['content']
+    content = row[column]
     if type(content) != float:                                          # Some parents have no content (nan)
         intro = content.split('\n')[0]                                  # Select first block of text
         intro = re.sub(r'[^\w\s]','',intro)                             # Remove punctuation
@@ -309,7 +309,7 @@ def select_and_prepare_first_paragraph_of_CBS_article(row):
         filtered_intro = [w for w in intro if not w in stop_words]      # Remove stopwords
     return ' '.join(filtered_intro)                                     # Convert from list to space-seperated string
 
-def select_and_prepare_title_of_CBS_article(row):
+def select_and_prepare_title_of_CBS_article(row, column = 'title'):
     '''
     Function to remove stopwords from the title and return it as a string.
     '''
@@ -319,12 +319,29 @@ def select_and_prepare_title_of_CBS_article(row):
     stop_words = set(stopwords.words('dutch'))
     
     filtered_title = ''                                                 # Set as empty string for rows without content
-    title = row['title']
+    title = row[column]
     if type(title) != float:                                          # Some parents have no content (nan)
         title = re.sub(r'[^\w\s]','',title)                             # Remove punctuation
         title = nltk.tokenize.word_tokenize(title)
         filtered_title = [w for w in title if not w in stop_words]      # Remove stopwords
     return ' '.join(filtered_title)                                     # Convert from list to space-seperated string
+
+def remove_stopwords_from_content(row, column = 'content'):
+    '''
+    Function to remove stopwords from the content and return it as a string.
+    '''
+    import nltk
+    from nltk.corpus import stopwords
+    import re
+    stop_words = set(stopwords.words('dutch'))
+    
+    filtered_content = ''                                                 # Set as empty string for rows without content
+    content = row[column]
+    if type(content) != float:                                          # Some parents have no content (nan)
+        content = re.sub(r'[^\w\s]','',content)                             # Remove punctuation
+        content = nltk.tokenize.word_tokenize(content)
+        filtered_content = [w for w in content if not w in stop_words]      # Remove stopwords
+    return ' '.join(filtered_content)                                     # Convert from list to space-seperated string
     
 def expand_parents_df(parents):
     '''
