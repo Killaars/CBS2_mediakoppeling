@@ -4,7 +4,9 @@ import pandas as pd
 from pathlib import Path
 
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
+path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 modelpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/nl_vectors_wiki_lg')
+modelpath = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/nl_vectors_wiki_lg/')
 
 nlp = spacy.load(modelpath)
 #%%
