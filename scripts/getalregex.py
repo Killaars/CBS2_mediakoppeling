@@ -7,11 +7,13 @@ from pathlib import Path
 from project_functions import preprocessing,expand_parents_df
 #%%
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
-parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0) # With added columns by expand_parents_df
-children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
+path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
+
+#parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0) # With added columns by expand_parents_df
+#children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
 
 # do the preprocessing of the parents and children. Defined in script functions.
-parents,children = preprocessing(parents,children)
+#parents,children = preprocessing(parents,children)
 
 #%%
 print('Loading features...')
