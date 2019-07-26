@@ -439,3 +439,63 @@ def sleutelwoorden_routine(row,parents):
         except:
             pass
     return pd.Series([matches_to_return_sleutelwoorden,matches_to_return_BT_TT,matches_to_return_title,matches_to_return_intro])
+
+def regex(row, column = 'content'):
+    from own_word2number import own_word2num
+    import re
+   
+    regex = r"\b(nul)\b|\b([a-zA-Z]*(twin|der|veer|vijf|zes|zeven|acht|negen)tig|[a-zA-Z]*tien|twee|drie|vier|vijf|zes|zeven|acht|negen|elf|twaalf)( )?(honderd|duizend|miljoen|miljard|procent)?\b|\b(honderd|duizend|miljoen|miljard)\b|\b[-+]?[.|,]?[\d]+(?:,\d\d\d)*[\.|,]?\d*((.|,)[\d]+)*(?:[eE][-+]?\d+)?( )?(honderd|duizend|miljoen|miljard|procent|%)?|half (miljoen|miljard|procent)"
+    matches = re.finditer(regex, row[column])
+    matches_to_return = []
+    
+    for matchNum, match in enumerate(matches, start=1):
+        string = match.group().strip().strip('.')
+        string = re.sub('%',' procent',string)
+        #string = string.strip('.')
+        
+        if re.match(r"(\d{1,3}[.]){1,3}\d{3}",string):
+            string= string.replace('.','')
+        else:
+            string= string.replace(',','.')
+        
+        if string.endswith(('honderd','duizend','miljoen','miljard','procent')):
+            endstring = re.search(r'honderd|duizend|miljoen|miljard|procent',string).group()
+            if endstring=='honderd':
+                endstringmultiplier = 100
+            elif endstring=='duizend':
+                endstringmultiplier = 1000
+            elif endstring=='miljoen':
+                endstringmultiplier = 1000000
+            elif endstring=='miljard':
+                endstringmultiplier = 1000000000
+            elif endstring=='procent':
+                endstringmultiplier = 1
+            else:
+                endstringmultiplier = 1
+            
+            # remove endstring from string
+            string = re.sub('honderd|duizend|miljoen|miljard|procent',  '',string)
+            # if empty, only endstring was string, example honderd
+            if string == '':
+                string = endstringmultiplier
+            else:
+                try:
+                    string = own_word2num(string.strip('.').strip())# strip points and spaces in around match
+                    if endstring=='procent':
+                        matches_to_return.append(str(string)+' procent')
+                    else:
+                        matches_to_return.append(string*endstringmultiplier) 
+                except:
+                    string = string.strip('.').strip()
+                    if endstring=='procent':
+                        matches_to_return.append(str(string)+' procent')
+                    else:
+                        matches_to_return.append(string*endstringmultiplier) 
+        else:
+            #print(string)
+            try:
+                matches_to_return.append(own_word2num(string)) # strip points and spaces in around match
+            except:
+                matches_to_return.append(string)
+      
+    return matches_to_return
