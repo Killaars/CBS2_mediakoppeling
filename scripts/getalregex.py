@@ -33,73 +33,70 @@ def regex(row, column = 'content'):
         
         for matchNum, match in enumerate(matches, start=1):
             string = match.group().strip().strip('.')
-            print(string)
             string = re.sub('%',' procent',string)
             #string = string.strip('.')
-            
-            if re.match(r"(\d{1,3}[.]){1,3}\d{3}",string):
-                string= string.replace('.','')
-            else:
-                string= string.replace(',','.')
-            
-            if string.endswith(('honderd','duizend','miljoen','miljard','procent')):
-                endstring = re.search(r'honderd|duizend|miljoen|miljard|procent',string).group()
-                if endstring=='honderd':
-                    endstringmultiplier = 100
-                elif endstring=='duizend':
-                    endstringmultiplier = 1000
-                elif endstring=='miljoen':
-                    endstringmultiplier = 1000000
-                elif endstring=='miljard':
-                    endstringmultiplier = 1000000000
-                elif endstring=='procent':
-                    endstringmultiplier = 1
-                else:
-                    endstringmultiplier = 1
-                
-                # remove endstring from string
-                string = re.sub('honderd|duizend|miljoen|miljard|procent',  '',string)
-                # if empty, only endstring was string, example honderd
-                print(string)
-                if string == '':
-                    string = endstringmultiplier
-                else:
-                    try:
-                        string = own_word2num(string.strip('.').strip())# strip points and spaces in around match
-                        if endstring=='procent':
-                            matches_to_return.append(str(string)+' procent')
-                        else:
-                            matches_to_return.append(string*endstringmultiplier) 
-                    except:
-                        string = string.strip('.').strip()
-                        if endstring=='procent':
-                            matches_to_return.append(str(string)+' procent')
-                        else:
-                            matches_to_return.append(string*endstringmultiplier) 
-            else:
-                #print(string)
-                try:
-                    matches_to_return.append(own_word2num(string)) # strip points and spaces in around match
-                except:
-                    matches_to_return.append(string)
-          
-    return matches_to_return
+            print(string) 
+#            if re.match(r"(\d{1,3}[.]){1,3}\d{3}",string):
+#                string= string.replace('.','')
+#            else:
+#                string= string.replace(',','.')
+#            
+#            if string.endswith(('honderd','duizend','miljoen','miljard','procent')):
+#                endstring = re.search(r'honderd|duizend|miljoen|miljard|procent',string).group()
+#                if endstring=='honderd':
+#                    endstringmultiplier = 100
+#                elif endstring=='duizend':
+#                    endstringmultiplier = 1000
+#                elif endstring=='miljoen':
+#                    endstringmultiplier = 1000000
+#                elif endstring=='miljard':
+#                    endstringmultiplier = 1000000000
+#                elif endstring=='procent':
+#                    endstringmultiplier = 1
+#                else:
+#                    endstringmultiplier = 1
+#                
+#                # remove endstring from string
+#                string = re.sub('honderd|duizend|miljoen|miljard|procent',  '',string)
+#                # if empty, only endstring was string, example honderd
+#                if string == '':
+#                    string = endstringmultiplier
+#                else:
+#                    try:
+#                        string = own_word2num(string.strip('.').strip())# strip points and spaces in around match
+#                        if endstring=='procent':
+#                            matches_to_return.append(str(string)+' procent')
+#                        else:
+#                            matches_to_return.append(string*endstringmultiplier) 
+#                    except:
+#                        string = string.strip('.').strip()
+#                        if endstring=='procent':
+#                            matches_to_return.append(str(string)+' procent')
+#                        else:
+#                            matches_to_return.append(string*endstringmultiplier) 
+#            else:
+#                #print(string)
+#                try:
+#                    matches_to_return.append(own_word2num(string)) # strip points and spaces in around match
+#                except:
+#                    matches_to_return.append(string)
+#        print(matches_to_return) 
+#    return matches_to_return
 
 
 
 test = pd.DataFrame()
 #test.loc[0,'content_child'] = '50.000 bla 541.000 bla 941.611 bla 20.1 bla 20.601 bla 20,601 bla 2019.  bla 2.000.000 bla 2.000.000.000 bla 0,381% bla 0.381%'
+#test.loc[0,'content_child'] = 'gemeenten provincies en waterschappen hebben voor 2018 voor 64.2 miljard euro aan zowel baten als lasten begroot. daarbij zijn de onttrekkingen en toevoegingen aan reserves gesaldeerd. aan baten verwachten de lokale overheden onder meer 14,2 miljard euro aan heffingen te innen bij huishoudens en bedrijven. gemeenten heffen 9,7 miljard euro, waterschappen 2,8 miljard euro en provincies 1,6 miljard euro. in 2017 verwachtten de drie overheidslagen nog 13,7 miljard aan heffingen binnen te halen. dit meldt het cbs op basis van begrotingen 2018.'
+test.loc[0,'content_child'] = 'gemeenten provincies en waterschappen hebben voor 2018 voor 64.2 miljard euro aan zowel baten als lasten begroot. daarbij zijn de onttrekkingen en toevoegingen aan reserves gesaldeerd. aan baten verwachten de lokale overheden onder meer 14,2 miljard euro aan heffingen te innen bij huishoudens en bedrijven. gemeenten heffen 9,7 miljard euro, waterschappen 2,8 miljard euro en provincies 1,6 miljard euro. in 2017 verwachtten de drie overheidslagen nog 13,7 miljard aan heffingen binnen te halen. dit meldt het cbs op basis van begrotingen 2018.'
 ##test.loc[0,'content_child'] = '382 duizend bla 382000 bla 382.000 bla 382,000'
 #test.loc[1,'content_child'] = 'elf procent 11%'
 #test.loc[2,'content_child'] = '2 miljoen bla 2000000 bla 2.000.000'
-#test.loc[3,'content_child'] = '49 negenenveertig'
-test.loc[0,'content_child'] = 'gemeenten, provincies en waterschappen hebben voor 2018 voor 64,2 miljard euro aan zowel baten als lasten begroot. daarbij zijn de onttrekkingen en toevoegingen aan reserves gesaldeerd. aan baten verwachten de lokale overheden onder meer 14,2 miljard euro aan heffingen te innen bij huishoudens en bedrijven. gemeenten heffen 9,7 miljard euro, waterschappen 2,8 miljard euro en provincies 1,6 miljard euro. in 2017 verwachtten de drie overheidslagen nog 13,7 miljard aan heffingen binnen te halen. dit meldt het cbs op basis van begrotingen 2018.'
-
-
+#test.loc[0,'content_child'] = '49 negenenveertig consumenten hebben in november 2,6 procent meer besteed dan in november 2016, meldt het cbs. de groei is hoger dan in de voorgaande maand. consumenten gaven in november 2017 vooral meer uit aan woninginrichting, huishoudelijke apparaten, kleding en schoenen. volgens de cbs consumptieradar zijn de omstandigheden voor de consumptie in januari 2018 minder gunstig dan in november. de consumptiecijfers zijn gecorrigeerd voor prijsveranderingen en veranderingen in de samenstelling van de koopdagen.'
 
 test['content_child_numbers'] = test.apply(regex,args=('content_child',),axis=1)
-print(test.loc[0,'content_child'])
-print(test.loc[0,'content_child_numbers'])
+#print(test.loc[0,'content_child'])
+#print(test.loc[0,'content_child_numbers'])
 
 #%%
 
