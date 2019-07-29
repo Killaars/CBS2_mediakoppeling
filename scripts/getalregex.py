@@ -7,7 +7,7 @@ from pathlib import Path
 from project_functions import preprocessing,expand_parents_df
 #%%
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
-path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
+#path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 
 #parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0) # With added columns by expand_parents_df
 #children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
@@ -36,52 +36,59 @@ def regex(row, column = 'content'):
             string = re.sub('%',' procent',string)
             #string = string.strip('.')
             print(string) 
-#            if re.match(r"(\d{1,3}[.]){1,3}\d{3}",string):
-#                string= string.replace('.','')
-#            else:
-#                string= string.replace(',','.')
-#            
-#            if string.endswith(('honderd','duizend','miljoen','miljard','procent')):
-#                endstring = re.search(r'honderd|duizend|miljoen|miljard|procent',string).group()
-#                if endstring=='honderd':
-#                    endstringmultiplier = 100
-#                elif endstring=='duizend':
-#                    endstringmultiplier = 1000
-#                elif endstring=='miljoen':
-#                    endstringmultiplier = 1000000
-#                elif endstring=='miljard':
-#                    endstringmultiplier = 1000000000
-#                elif endstring=='procent':
-#                    endstringmultiplier = 1
-#                else:
-#                    endstringmultiplier = 1
-#                
-#                # remove endstring from string
-#                string = re.sub('honderd|duizend|miljoen|miljard|procent',  '',string)
-#                # if empty, only endstring was string, example honderd
-#                if string == '':
-#                    string = endstringmultiplier
-#                else:
-#                    try:
-#                        string = own_word2num(string.strip('.').strip())# strip points and spaces in around match
-#                        if endstring=='procent':
-#                            matches_to_return.append(str(string)+' procent')
-#                        else:
-#                            matches_to_return.append(string*endstringmultiplier) 
-#                    except:
-#                        string = string.strip('.').strip()
-#                        if endstring=='procent':
-#                            matches_to_return.append(str(string)+' procent')
-#                        else:
-#                            matches_to_return.append(string*endstringmultiplier) 
-#            else:
-#                #print(string)
-#                try:
-#                    matches_to_return.append(own_word2num(string)) # strip points and spaces in around match
-#                except:
-#                    matches_to_return.append(string)
-#        print(matches_to_return) 
-#    return matches_to_return
+            string = 'miljard'
+            if re.match(r"(\d{1,3}[.]){1,3}\d{3}",string):
+                string= string.replace('.','')
+            else:
+                string= string.replace(',','.')
+            
+            if string.endswith(('honderd','duizend','miljoen','miljard','procent')):
+                endstring = re.search(r'honderd|duizend|miljoen|miljard|procent',string).group()
+                print(endstring) 
+                if endstring=='honderd':
+                    endstringmultiplier = 100
+                elif endstring=='duizend':
+                    endstringmultiplier = 1000
+                elif endstring=='miljoen':
+                    endstringmultiplier = 1000000
+                elif endstring=='miljard':
+                    endstringmultiplier = 1000000000
+                elif endstring=='procent':
+                    endstringmultiplier = 1
+                else:
+                    endstringmultiplier = 1
+                
+                print(endstringmultiplier) 
+                
+                # remove endstring from string
+                string = re.sub('honderd|duizend|miljoen|miljard|procent',  '',string)
+                # if empty, only endstring was string, example honderd
+                print(string) 
+                if string == '':
+                    matches_to_return.append(endstringmultiplier) 
+                    print(string)
+                else:
+                    try:
+                        string = own_word2num(string.strip('.').strip())# strip points and spaces in around match
+                        if endstring=='procent':
+                            matches_to_return.append(str(string)+' procent')
+                        else:
+                            matches_to_return.append(string*endstringmultiplier) 
+                    except:
+                        string = string.strip('.').strip()
+                        if endstring=='procent':
+                            matches_to_return.append(str(string)+' procent')
+                        else:
+                            matches_to_return.append(string*endstringmultiplier) 
+            else:
+                #print(string)
+                try:
+                    matches_to_return.append(own_word2num(string)) # strip points and spaces in around match
+                except:
+                    matches_to_return.append(string)
+            print(matches_to_return)
+            break
+    return matches_to_return
 
 
 
