@@ -7,20 +7,19 @@ from pathlib import Path
 from project_functions import preprocessing,expand_parents_df
 #%%
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
-path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
+#path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 
-#parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0) # With added columns by expand_parents_df
-#children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
+parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0) # With added columns by expand_parents_df
+children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
 
 # do the preprocessing of the parents and children. Defined in script functions.
-#parents,children = preprocessing(parents,children)
+parents,children = preprocessing(parents,children)
 
 #%%
 print('Loading features...')
 #features = pd.read_csv(str(path / 'features_march_april_2019.csv'),index_col=0,nrows=1000)
 
 #%%
-
 def regex(row, column = 'content'):
     from own_word2number import own_word2num
     import re
@@ -28,7 +27,7 @@ def regex(row, column = 'content'):
     matches_to_return = []
     if type(row[column]) != float:
    
-        regex = r"\b(nul)\b|\b([a-zA-Z]*(twin|der|veer|vijf|zes|zeven|acht|negen)tig|[a-zA-Z]*tien|twee|drie|vier|vijf|zes|zeven|acht|negen|elf|twaalf)( )?(honderd|duizend|miljoen|miljard|procent)?\b|\b(honderd|duizend|miljoen|miljard)\b|\b[-+]?[.|,]?[\d]+(?:,\d\d\d)*[\.|,]?\d*((.|,)[\d]+)*(?:[eE][-+]?\d+)?( )?(honderd|duizend|miljoen|miljard|procent|%)?|half (miljoen|miljard|procent)"
+        regex = r"\b(nul)\b|\b([a-zA-Z]*(twin|der|veer|vijf|zes|zeven|acht|negen)tig|[a-zA-Z]*tien|twee|drie|vier|vijf|zes|zeven|acht|negen|elf|twaalf)( )?(honderd|duizend|miljoen|miljard|procent)?\b|\b(honderd|duizend|miljoen|miljard)\b|\b[-+]?[.|,]?[\d]+(?:,\d\d\d)*[\.|,]?\d*([.|,]\d+)*(?:[eE][-+]?\d+)?( )?(honderd|duizend|miljoen|miljard|procent|%)?|half (miljoen|miljard|procent)"
         matches = re.finditer(regex, row[column])
         
         for matchNum, match in enumerate(matches, start=1):
@@ -57,6 +56,10 @@ def regex(row, column = 'content'):
                 # remove endstring from string
                 string = re.sub('honderd|duizend|miljoen|miljard|procent',  '',string)
                 # if empty, only endstring was string, example honderd
+                if re.match(r"(\d{1,3}[.]){1,3}\d{3}",string):
+                    string= string.replace('.','')
+                else:
+                    string= string.replace(',','.')
                 if string == '':
                     matches_to_return.append(endstringmultiplier) 
                 else:
@@ -67,17 +70,20 @@ def regex(row, column = 'content'):
                         else:
                             matches_to_return.append(float(string)*endstringmultiplier) 
                     except:
-                        string = string.strip('.').strip()
-                        if endstring=='procent':
-                            matches_to_return.append(str(string)+' procent')
-                        else:
-                            matches_to_return.append(float(string)*endstringmultiplier) 
+                        try:
+                            string = string.strip('.').strip()
+                            if endstring=='procent':
+                                matches_to_return.append(str(string)+' procent')
+                            else:
+                                matches_to_return.append(float(string)*endstringmultiplier)
+                        except:
+                            pass
             else:
                 try:
                     matches_to_return.append(own_word2num(string)) # strip points and spaces in around match
                 except:
                     matches_to_return.append(string)
-    return matches_to_return
+    return list(set(matches_to_return))
 
 
 
@@ -95,5 +101,28 @@ test['content_child_numbers'] = test.apply(regex,args=('content_child',),axis=1)
 #print(test.loc[0,'content_child_numbers'])
 
 #%%
+temp = children.loc[[159041]]
+temp.loc[:,'getallen_uit_content'] = temp.apply(regex,args=('content',),axis=1)
 
-#parents.loc[:,'getallen_uit_content'] = parents.apply(regex,args=('content',),axis=1)
+#%%
+
+children.loc[:,'getallen_uit_content'] = children.apply(regex,args=('content',),axis=1)
+
+#%%
+for index in parents[100:].index:
+    print(index)
+    print(parents.loc[index,'content'])
+    print(parents.loc[index,'getallen_uit_content'])
+    
+#%%
+parents_themes = parents[['id','themes']]
+parents_themes.loc[:,'themes'] = parents_themes['themes'].str.split(',')
+
+parents_themes = parents_themes['themes'].apply(pd.Series) \
+    .merge(parents_themes, right_index = True, left_index = True) \
+    .drop(["themes"], axis = 1)\
+    .melt(id_vars = ['id'], value_name = "theme")\
+    .drop("variable", axis = 1) \
+    .dropna()
+
+parents_themes['theme'].value_counts()
