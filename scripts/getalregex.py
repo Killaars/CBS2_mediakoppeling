@@ -7,7 +7,7 @@ from pathlib import Path
 from project_functions import preprocessing,expand_parents_df
 #%%
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
-#path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
+path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 
 #parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0) # With added columns by expand_parents_df
 #children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
@@ -34,9 +34,6 @@ def regex(row, column = 'content'):
         for matchNum, match in enumerate(matches, start=1):
             string = match.group().strip().strip('.')
             string = re.sub('%',' procent',string)
-            #string = string.strip('.')
-            print(string) 
-            string = 'miljard'
             if re.match(r"(\d{1,3}[.]){1,3}\d{3}",string):
                 string= string.replace('.','')
             else:
@@ -44,7 +41,6 @@ def regex(row, column = 'content'):
             
             if string.endswith(('honderd','duizend','miljoen','miljard','procent')):
                 endstring = re.search(r'honderd|duizend|miljoen|miljard|procent',string).group()
-                print(endstring) 
                 if endstring=='honderd':
                     endstringmultiplier = 100
                 elif endstring=='duizend':
@@ -58,36 +54,29 @@ def regex(row, column = 'content'):
                 else:
                     endstringmultiplier = 1
                 
-                print(endstringmultiplier) 
-                
                 # remove endstring from string
                 string = re.sub('honderd|duizend|miljoen|miljard|procent',  '',string)
                 # if empty, only endstring was string, example honderd
-                print(string) 
                 if string == '':
                     matches_to_return.append(endstringmultiplier) 
-                    print(string)
                 else:
                     try:
                         string = own_word2num(string.strip('.').strip())# strip points and spaces in around match
                         if endstring=='procent':
                             matches_to_return.append(str(string)+' procent')
                         else:
-                            matches_to_return.append(string*endstringmultiplier) 
+                            matches_to_return.append(float(string)*endstringmultiplier) 
                     except:
                         string = string.strip('.').strip()
                         if endstring=='procent':
                             matches_to_return.append(str(string)+' procent')
                         else:
-                            matches_to_return.append(string*endstringmultiplier) 
+                            matches_to_return.append(float(string)*endstringmultiplier) 
             else:
-                #print(string)
                 try:
                     matches_to_return.append(own_word2num(string)) # strip points and spaces in around match
                 except:
                     matches_to_return.append(string)
-            print(matches_to_return)
-            break
     return matches_to_return
 
 
