@@ -114,15 +114,3 @@ for index in parents[100:].index:
     print(parents.loc[index,'content'])
     print(parents.loc[index,'getallen_uit_content'])
     
-#%%
-parents_themes = parents[['id','themes']]
-parents_themes.loc[:,'themes'] = parents_themes['themes'].str.split(',')
-
-parents_themes = parents_themes['themes'].apply(pd.Series) \
-    .merge(parents_themes, right_index = True, left_index = True) \
-    .drop(["themes"], axis = 1)\
-    .melt(id_vars = ['id'], value_name = "theme")\
-    .drop("variable", axis = 1) \
-    .dropna()
-
-parents_themes['theme'].value_counts()
