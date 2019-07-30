@@ -7,9 +7,9 @@ import datetime
 from project_functions import preprocessing,expand_parents_df,remove_stopwords_from_content
 #%%
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
-#path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
+path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 
-parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0) # With added columns by expand_parents_df
+parents = pd.read_csv(str(path / 'related_parents.csv'),index_col=0) # With added columns by expand_parents_df
 children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
 
 # do the preprocessing of the parents and children. Defined in script functions.
@@ -47,6 +47,7 @@ labelencoder = LabelEncoder()
 children_capped_themes.loc[:,'encoded_label'] = labelencoder.fit_transform(children_capped_themes.loc[:, 'theme'])
 #%%
 from sklearn.feature_extraction.text import TfidfVectorizer
+a = datetime.datetime.now()
 tf=TfidfVectorizer()
 text_tf= tf.fit_transform(children_capped_themes['content'][:1000])
 
@@ -61,6 +62,9 @@ from sklearn import metrics
 clf = MultinomialNB().fit(X_train, y_train)
 predicted= clf.predict(X_test)
 print("MultinomialNB Accuracy TF-IDF:",metrics.accuracy_score(y_test, predicted))
+b = datetime.datetime.now()
+c=b-a
+print(c)
 
 #%%
 from gensim.summarization.bm25 import get_bm25_weights
