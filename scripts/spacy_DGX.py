@@ -36,7 +36,7 @@ def similarity(row):
         content_similarity = content_parent.similarity(content_child)
         return pd.Series([title_similarity, content_similarity])
     except:
-        pass
+        return pd.Series([0, 0])
     
     
 test[['title_similarity', 'content_similarity']] = test.apply(similarity,axis=1)

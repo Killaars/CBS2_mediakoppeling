@@ -15,7 +15,20 @@ from dask.multiprocessing import get
 
 nltk.download('punkt')
 
-from project_functions import preprocessing, check_sleutelwoorden,expand_parents_df,correct,sleutelwoorden_routine
+from project_functions import preprocessing, \
+                                check_sleutelwoorden,\
+                                expand_parents_df,\
+                                correct,\
+                                sleutelwoorden_routine,\
+                                find_link,\
+                                find_id,\
+                                find_title,\
+                                find_sleutelwoorden_UF,\
+                                find_BT_TT,\
+                                find_title_no_stop,\
+                                find_1st_paragraph_no_stop,\
+                                determine_matches,\
+                                date_comparison
 
 #%%
 

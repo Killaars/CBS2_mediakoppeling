@@ -80,7 +80,7 @@ def regex(row, column = 'content'):
                             pass
             else:
                 try:
-                    matches_to_return.append(own_word2num(string)) # strip points and spaces in around match
+                    matches_to_return.append(own_word2num(string)) 
                 except:
                     matches_to_return.append(string)
     return list(set(matches_to_return))
@@ -106,7 +106,7 @@ temp.loc[:,'getallen_uit_content'] = temp.apply(regex,args=('content',),axis=1)
 
 #%%
 
-children.loc[:,'getallen_uit_content'] = children.apply(regex,args=('content',),axis=1)
+parents.loc[:,'getallen_uit_content'] = parents.apply(regex,args=('content',),axis=1)
 
 #%%
 for index in parents[100:].index:
