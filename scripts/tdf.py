@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import datetime
+import pickle
 
 from project_functions import preprocessing,expand_parents_df,remove_stopwords_from_content
 #%%
@@ -49,17 +50,22 @@ children_capped_themes.loc[:,'encoded_label'] = labelencoder.fit_transform(child
 from sklearn.feature_extraction.text import TfidfVectorizer
 a = datetime.datetime.now()
 tf=TfidfVectorizer()
-text_tf= tf.fit_transform(children_capped_themes['content'][:1000])
+text_tf= tf.fit_transform(children_capped_themes['content'])
 
 
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(
-    text_tf, children_capped_themes['encoded_label'][:1000], test_size=0.2, random_state=123)
+    text_tf, children_capped_themes['encoded_label'], test_size=0.2, random_state=123)
 #%%
 from sklearn.naive_bayes import MultinomialNB
 from sklearn import metrics
 # Model Generation Using Multinomial Naive Bayes
 clf = MultinomialNB().fit(X_train, y_train)
+
+print('Saving model...')
+filename = 'MultiNB_tf.sav'
+pickle.dump(clf, open(filename, 'wb'))
+
 predicted= clf.predict(X_test)
 print("MultinomialNB Accuracy TF-IDF:",metrics.accuracy_score(y_test, predicted))
 b = datetime.datetime.now()
@@ -72,16 +78,20 @@ children_capped_themes.loc[:,'splitted_content'] = children_capped_themes.loc[:,
 #%%
 a = datetime.datetime.now()
 print('busy with BM25')
-BM25 = get_bm25_weights(children_capped_themes.loc[:,'splitted_content'][:1000])
+BM25 = get_bm25_weights(children_capped_themes.loc[:,'splitted_content'])
 #%%
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(
-    BM25, children_capped_themes['encoded_label'][:1000], test_size=0.2, random_state=123)
+    BM25, children_capped_themes['encoded_label'], test_size=0.2, random_state=123)
 #%%
 from sklearn.naive_bayes import MultinomialNB
 from sklearn import metrics
 # Model Generation Using Multinomial Naive Bayes
-clf = MultinomialNB().fit(X_train, y_train)
+clf = MultinomialNB().fit(X_train[50000:], y_train[50000:])
+
+filename = 'MultiNB_BM25.sav'
+pickle.dump(clf, open(filename, 'wb'))
+
 predicted= clf.predict(X_test)
 print("MultinomialNB Accuracy BM25:",metrics.accuracy_score(y_test, predicted))
 b = datetime.datetime.now()
