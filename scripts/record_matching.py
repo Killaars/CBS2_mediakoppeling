@@ -377,6 +377,10 @@ scale = 7
 features_matches['date_diff_score'] = features_matches.apply(date_comparison,args=(offset,scale),axis=1)
 print('Done with diff_dates')
 
+features_matches['child_numbers'] = features_matches.apply(regex,args=('content_child',),axis=1)
+features_matches[['numbers_jaccard','numbers_lenmatches','numbers_matches']] = features_matches.apply(find_numbers,axis=1)
+print('Done with numbers')
+
 b = datetime.datetime.now()
 c=b-a
 print(c)

@@ -194,6 +194,15 @@ def similarity(row,nlp):
         return pd.Series([title_similarity, content_similarity])
     except:
         return pd.Series([0, 0])
+    
+def determine_vrijenieuwsgaring(row):
+    '''
+    Check if records are a match with vrijenieuwsgaring
+    '''
+    if '158123' in row['related_parents']:
+        return True
+    else:
+        return False
 #%%    
 def correct(row,rowname='test'):
     '''

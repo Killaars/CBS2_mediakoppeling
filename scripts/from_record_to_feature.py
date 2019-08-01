@@ -21,7 +21,8 @@ from project_functions import preprocessing_parent, \
                                 regex,\
                                 date_comparison,\
                                 find_numbers,\
-                                similarity
+                                similarity,\
+                                determine_vrijenieuwsgaring
 #%%
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
 
@@ -67,7 +68,8 @@ parents = parents[(parents['publish_date_date']>date_low)&
 children = children[(children['publish_date_date']>date_low)&
                                             (children['publish_date_date']<date_up)]
 
-
+#%%
+children['vrijenieuwsgaring'] = children.apply(determine_vrijenieuwsgaring,axis=1)
 #%%
 # subset of children
 subset = children
@@ -132,22 +134,23 @@ features['child_numbers'] = features.apply(regex,args=('content_child',),axis=1)
 features[['numbers_jaccard','numbers_lenmatches','numbers_matches']] = features.apply(find_numbers,axis=1)
 print('Done with numbers')
 
-import spacy
-modelpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/nl_vectors_wiki_lg')
-
-nlp = spacy.load(modelpath)
-features[['title_similarity','content_similarity']] = features.apply(similarity,args=(nlp,),axis=1)
-print('Done with similarity')
+#import spacy
+#modelpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/nl_vectors_wiki_lg')
+#
+#nlp = spacy.load(modelpath)
+#features[['title_similarity','content_similarity']] = features.apply(similarity,args=(nlp,),axis=1)
+#print('Done with similarity')
 
 b = datetime.datetime.now()
 c=b-a
 print(c)
-
+features.to_csv(str(path / 'new_features_march_april_2019.csv'))
 #%%
-
+features['vrijenieuwsgaring'] = features.apply(determine_vrijenieuwsgaring,axis=1)
     
 
-    
+features.drop(columns = ['vrijenieuwsgaring'],inplace=True)
+features.to_csv(str(path / 'new_features_march_april_2019.csv'))    
 #%%    
 temp = features.head(100)
 temp['child_numbers'] = temp.apply(regex,args=('content_child',),axis=1)
@@ -160,3 +163,4 @@ modelpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/nl_vectors_wiki_lg
 nlp = spacy.load(modelpath)
 temp[['title_similarity','content_similarity']] = temp.apply(similarity,args=(nlp,),axis=1)
 print('Done with similarity')
+
