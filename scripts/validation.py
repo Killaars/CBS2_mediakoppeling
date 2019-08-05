@@ -1,8 +1,14 @@
 #%%
 import pandas as pd
+import pickle
 from pathlib import Path
 
+import recordlinkage
+from recordlinkage.index import Full
+
 from project_functions import preprocessing_child,\
+                                preprocessing_parent,\
+                                expand_parents,\
                                 find_link,\
                                 find_id,\
                                 find_title,\
@@ -14,35 +20,48 @@ from project_functions import preprocessing_child,\
                                 regex,\
                                 find_numbers,\
                                 remove_stopwords_from_content
-
-import recordlinkage
-from recordlinkage.index import Full
+                                
 #%%
-#---------------------------#
-# Reading and preprocessing #
-#---------------------------#
-
 # Read child
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
 modelpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/scripts/')
-children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
+children = pd.read_csv(str(path / 'validation_children.csv'))
 
 # Preprocessing child
 children = preprocessing_child(children)
 
 # Remove stopwords from title and content
-children.loc[:,'title_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('title_child',),axis=1)
-children.loc[:,'content_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('content_child',),axis=1)
+children.loc[:,'title_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('title',),axis=1)
+children.loc[:,'content_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('content',),axis=1)
 
-#
-
+#%%
 # Read all parents
-parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0)
 
-# Parents to datetime
+parents = pd.read_csv(str(path / 'validation_parents.csv'))
+parents = preprocessing_parent(parents)
+parents = expand_parents_df(parents)
+
+all_parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0)
+all_parents = preprocessing_parent(all_parents)
+all_parents = expand_parents_df(all_parents)
+
+all_parents.loc[:,'publish_date_date'] = pd.to_datetime(all_parents.loc[:,'publish_date_date'])
 parents.loc[:,'publish_date_date'] = pd.to_datetime(parents.loc[:,'publish_date_date'])
 
-# Select only the relevant columns
+all_parents = all_parents[['id',
+                   'publish_date_date',
+                   'title',
+                   'content',
+                   'link',
+                   'taxonomies',
+                   'Gebruik_UF',
+                   'BT_TT',
+                   'first_paragraph_without_stopwords',
+                   'title_without_stopwords',
+                   'content_without_stopwords',
+                   'parent_numbers',
+                   'related_children']]
+
 parents = parents[['id',
                    'publish_date_date',
                    'title',
@@ -57,7 +76,10 @@ parents = parents[['id',
                    'parent_numbers',
                    'related_children']]
 
-
+#%%
+parents = pd.concat((parents,all_parents))
+parents = parents.drop_duplicates(subset='id')
+#%%
 children = children[['id',
                      'publish_date_date',
                      'title',
@@ -139,25 +161,3 @@ print('Done with diff_dates')
 features['child_numbers'] = features.apply(regex,args=('content_child',),axis=1)
 features[['numbers_jaccard','numbers_lenmatches','numbers_matches']] = features.apply(find_numbers,axis=1)
 print('Done with numbers')
-
-# Predict the CBS theme based on the content of the child
-
-# Determine the title and content similarity
-
-# Load the machine learning model
-
-# Make the probalistic predictions
-
-# Return the most probable matches
-
-#%% Predict the CBS theme based on the content of the child
-import pickle
-from sklearn.feature_extraction.text import TfidfVectorizer
-tf=TfidfVectorizer()
-test = features.head(100)
-text_tf= tf.fit_transform(test['content_child'])
-clf = pickle.load(open(str(modelpath / 'MultiNB_tf.sav'), 'rb'))
-
-test.loc[:,'predicted_theme']= clf.predict(text_tf)
-
-
