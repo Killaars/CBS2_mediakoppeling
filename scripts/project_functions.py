@@ -58,23 +58,25 @@ def find_link(row):
     Ouput: id(s) from parent article
     '''
     # select content from row
-    content = row['content']
-    # some preprocessing of the content
-    content = content.replace('- ','-')
-    # split the content in words
-    splitted = content.split(' ')
-    
     link=''
-    # check the words for cbs site
-    for split in splitted:
-        if 'www.cbs.nl/' in split:
-            #link.append(split)
-            link=split
-            if type(link)==str:
-                link = link.translate({ord(i):None for i in '()'})
-                # puts them nicely in a list if any article has multiple links. 
-#                for id in parents[parents['link'].str.contains(link)==True]['id'].values:
-#                    matches_to_return.append(id)
+    content = row['content']
+    if type(content) != float:
+        # some preprocessing of the content
+        content = content.replace('- ','-')
+        # split the content in words
+        splitted = content.split(' ')
+        
+        
+        # check the words for cbs site
+        for split in splitted:
+            if 'www.cbs.nl/' in split:
+                #link.append(split)
+                link=split
+                if type(link)==str:
+                    link = link.translate({ord(i):None for i in '()'})
+                    # puts them nicely in a list if any article has multiple links. 
+    #                for id in parents[parents['link'].str.contains(link)==True]['id'].values:
+    #                    matches_to_return.append(id)
     return link
 
 def find_id(row,df,level):

@@ -15,7 +15,8 @@ from dask.multiprocessing import get
 
 nltk.download('punkt')
 
-from project_functions import preprocessing, \
+from project_functions import preprocessing_child, \
+                                preprocessing_parent,\
                                 check_sleutelwoorden,\
                                 expand_parents_df,\
                                 correct,\
@@ -635,3 +636,92 @@ print('Best score:', clf.best_score_)
 print('Best C:',clf.best_estimator_.C) 
 print('Best Kernel:',clf.best_estimator_.kernel)
 print('Best Gamma:',clf.best_estimator_.gamma)
+
+#%%
+import pickle
+
+path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/')
+
+X_test = pd.read_csv(str(path / 'data/solr/X_test.csv'),index_col=0)
+y_test = pd.read_csv(str(path / 'data/solr/y_test.csv'),index_col=0,header = None,names = ['label'])
+
+# load the model from disk
+loaded_model = pickle.load(open(str(path / 'scripts/best_random_forest_classifier_with_numbers_similarity.pkl'), 'rb'))
+y_proba = loaded_model.predict_proba(X_test)
+y_pred = loaded_model.predict(X_test)
+
+
+#%%
+def resultClassifierfloat(row):
+    threshold = 0.5
+    if (row['prediction'] > threshold and row['label'] == True):
+        return 'TP'
+    if (row['prediction'] < threshold and row['label'] == False):
+        return 'TN'
+    if (row['prediction'] < threshold and row['label'] == True):
+        return 'FN'
+    if (row['prediction'] > threshold and row['label'] == False):
+        return 'FP'
+    
+results = pd.DataFrame(index=y_test.index)
+results['label']=y_test.values
+results['prediction']=y_pred
+results['predicted_nomatch']=y_proba[:,0]
+results['predicted_match']=y_proba[:,1]
+
+results['confusion_matrix'] = results.apply(resultClassifierfloat,axis=1)
+results_counts = results['confusion_matrix'].value_counts()
+
+print(results_counts)
+print('Precision: ',(results_counts.loc['TP'])/(results_counts.loc['TP']+results_counts.loc['FP']))
+print('Recall: ',(results_counts.loc['TP'])/(results_counts.loc['TP']+results_counts.loc['FN']))
+print("Accuracy: ",metrics.accuracy_score(y_test, y_pred))
+
+#%%
+importances = list(loaded_model.feature_importances_)
+
+feature_importances = [(feature, round(importance, 2)) for feature, importance in zip(X_test.columns, importances)]
+# Sort the feature importances by most important first
+feature_importances = sorted(feature_importances, key = lambda x: x[1], reverse = True)
+# Print out the feature and importances 
+[print('Variable: {:20} Importance: {}'.format(*pair)) for pair in feature_importances]
+
+#%%
+X_test = pd.read_csv(str(path / 'data/solr/X_test2.csv'),index_col=0)
+X_test['label']=y_test.values
+X_test['prediction']=y_pred
+X_test['predicted_nomatch']=y_proba[:,0]
+X_test['predicted_match']=y_proba[:,1]
+
+def top3_check(row,X_test,n):
+    child_id = row.index
+    # select all matches with specific child id
+    to_check = X_test[X_test['child_id']==child_id]
+    
+    # sort based on match proba
+    to_check = to_check.sort_values(by=['predicted_match'])
+    
+    first_X = to_check.iloc[:n,:]
+    # if first X values of predicted label have True in them and first values of annotated label also, then TP
+    if (np.mean(first_X['prediction'])>0)&(np.mean(first_X['label'])>0):
+        return 'TP'
+    # if first X values of predicted label have True in them but first values of annotated label not , then FP
+    if (np.mean(first_X['prediction'])>0)&(np.mean(first_X['label'])==0):
+        return 'FP'
+    # if first X values of predicted label have no True in them and first values of annotated label also only false, then TN
+    if (np.mean(first_X['prediction'])==0)&(np.mean(first_X['label'])==0):
+        return 'TN'
+    # if first X values of predicted label have no True in them but first values of annotated label have a true, then FN
+    if (np.mean(first_X['prediction'])==0)&(np.mean(first_X['label'])>0):
+        return 'FN'
+
+# df with all child id's
+child_id_df = pd.DataFrame(index = X_test['child_id'].unique())
+
+n = 3 # first X values
+child_id_df['confusion_matrix'] = child_id_df.apply(top3_check,args=(X_test,n),axis=1)
+
+
+
+
+

@@ -1,14 +1,20 @@
 #%%
 import pandas as pd
+import numpy as np
 import pickle
 from pathlib import Path
 
 import recordlinkage
 from recordlinkage.index import Full
 
+from multiprocessing import  Pool
+from functools import partial
+
+from sklearn import metrics
+
 from project_functions import preprocessing_child,\
                                 preprocessing_parent,\
-                                expand_parents,\
+                                expand_parents_df,\
                                 find_link,\
                                 find_id,\
                                 find_title,\
@@ -19,12 +25,45 @@ from project_functions import preprocessing_child,\
                                 date_comparison,\
                                 regex,\
                                 find_numbers,\
-                                remove_stopwords_from_content
+                                remove_stopwords_from_content,\
+                                determine_matches
+import spacy
+wordvectorpath = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/nl_vectors_wiki_lg/')
+nlp = spacy.load(wordvectorpath)
+                                
+def similarity(row):
+    try:
+        title_parent = nlp(row['title_without_stopwords'])
+        title_child = nlp(row['title_child_no_stop'])
+        content_parent = nlp(row['content_without_stopwords'])
+        content_child = nlp(row['content_child_no_stop'])
+        
+        title_similarity = title_parent.similarity(title_child)
+        content_similarity = content_parent.similarity(content_child)
+        return pd.Series([title_similarity, content_similarity])
+    except:
+        return pd.Series([0, 0])
+
+def parallelize(data, func, num_of_processes=8):
+    data_split = np.array_split(data, num_of_processes)
+    pool = Pool(num_of_processes)
+    data = pd.concat(pool.map(func, data_split))
+    pool.close()
+    pool.join()
+    return data
+
+def run_on_subset(func, data_subset):
+    return data_subset.apply(func, axis=1)
+
+def parallelize_on_rows(data, func, num_of_processes=8):
+    return parallelize(data, partial(run_on_subset, func), num_of_processes)
                                 
 #%%
 # Read child
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
+path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 modelpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/scripts/')
+modelpath = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/scripts/')
 children = pd.read_csv(str(path / 'validation_children.csv'))
 
 # Preprocessing child
@@ -130,6 +169,8 @@ features.rename(columns={'title_x': 'title_parent',
                          'publish_date_date_y': 'publish_date_date_child'}, inplace=True)
 print('Done with adding extra data')
 
+features.to_csv(str(path / 'validation_features.csv'))
+
 # Check if the whole CBS title exists in child article
 features['feature_whole_title'] = features.apply(find_title,axis=1)
 print('Done with whole title')
@@ -138,6 +179,8 @@ print('Done with whole title')
 features[['sleutelwoorden_jaccard','sleutelwoorden_lenmatches','sleutelwoorden_matches']] = features.apply(find_sleutelwoorden_UF,axis=1)
 print('Done with sleutelwoorden')
 
+features.to_csv(str(path / 'validation_features.csv'))
+
 # Check the broader terms and top terms
 features[['BT_TT_jaccard','BT_TT_lenmatches','BT_TT_matches']] = features.apply(find_BT_TT,axis=1)
 print('Done with BT_TT')
@@ -145,6 +188,8 @@ print('Done with BT_TT')
 # Check the CBS title without stopwords
 features[['title_no_stop_jaccard','title_no_stop_lenmatches','title_no_stop_matches']] = features.apply(find_title_no_stop,axis=1)
 print('Done with title no stop')
+
+features.to_csv(str(path / 'validation_features.csv'))
 
 # Check the first paragraph of the CBS content without stopwords
 features[['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches','1st_paragraph_no_stop_matches']] = features.apply(find_1st_paragraph_no_stop,axis=1)
@@ -157,7 +202,54 @@ scale = 7
 features['date_diff_score'] = features.apply(date_comparison,args=(offset,scale),axis=1)
 print('Done with diff_dates')
 
+features.to_csv(str(path / 'validation_features.csv'))
+
 # Check all the CBS numbers 
 features['child_numbers'] = features.apply(regex,args=('content_child',),axis=1)
 features[['numbers_jaccard','numbers_lenmatches','numbers_matches']] = features.apply(find_numbers,axis=1)
 print('Done with numbers')
+
+# Determine the title and content similarity
+features[['title_similarity','content_similarity']] = parallelize_on_rows(features, similarity,75)
+print('Done with similarity')
+
+features['match'] = features.apply(determine_matches,axis=1)
+print('Done with determining matches')
+
+features.to_csv(str(path / 'validation_features.csv'))
+
+# load the model from disk
+loaded_model = pickle.load(open(str(path / 'scripts/best_random_forest_classifier_with_numbers_similarity.pkl'), 'rb'))
+y_proba = loaded_model.predict_proba(features)
+y_pred = loaded_model.predict(features)
+
+def resultClassifierfloat(row):
+    threshold = 0.5
+    if (row['prediction'] > threshold and row['label'] == True):
+        return 'TP'
+    if (row['prediction'] < threshold and row['label'] == False):
+        return 'TN'
+    if (row['prediction'] < threshold and row['label'] == True):
+        return 'FN'
+    if (row['prediction'] > threshold and row['label'] == False):
+        return 'FP'
+    
+results = pd.DataFrame(index=features.index)
+results['label']=features['match'].values
+results['prediction']=y_pred
+results['predicted_nomatch']=y_proba[:,0]
+results['predicted_match']=y_proba[:,1]
+
+results['confusion_matrix'] = results.apply(resultClassifierfloat,axis=1)
+results_counts = results['confusion_matrix'].value_counts()
+
+print(results_counts)
+print('Precision: ',(results_counts.loc['TP'])/(results_counts.loc['TP']+results_counts.loc['FP']))
+print('Recall: ',(results_counts.loc['TP'])/(results_counts.loc['TP']+results_counts.loc['FN']))
+print("Accuracy: ",metrics.accuracy_score(results['label'], y_pred))
+
+
+features['prediction']=y_pred
+features['predicted_nomatch']=y_proba[:,0]
+features['predicted_match']=y_proba[:,1]
+features.to_csv(str(path / 'validation_features.csv'))
