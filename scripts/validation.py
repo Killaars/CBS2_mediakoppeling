@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import pickle
 from pathlib import Path
+import datetime
 
 import recordlinkage
 from recordlinkage.index import Full
@@ -127,6 +128,9 @@ children = children[['id',
                      'title_child_no_stop',
                      'content_child_no_stop']]
 
+print(np.shape(parents),np.shape(children))
+children = children[:10]
+a=datetime.datetime.now()
 #-------------------------------#
 # Rules before the actual model #
 #-------------------------------#
@@ -141,7 +145,6 @@ children.loc[:,'cbs_link'] = children.apply(find_link,axis=1)
 #---------------------------------------#
 # Feature creation and model prediction #
 #---------------------------------------#
-
 # Indexation step
 indexer = recordlinkage.Index()
 indexer.add(Full())
@@ -169,7 +172,7 @@ features.rename(columns={'title_x': 'title_parent',
                          'publish_date_date_y': 'publish_date_date_child'}, inplace=True)
 print('Done with adding extra data')
 
-features.to_csv(str(path / 'validation_features.csv'))
+#features.to_csv(str(path / 'validation_features.csv'))
 
 # Check if the whole CBS title exists in child article
 features['feature_whole_title'] = features.apply(find_title,axis=1)
@@ -179,7 +182,7 @@ print('Done with whole title')
 features[['sleutelwoorden_jaccard','sleutelwoorden_lenmatches','sleutelwoorden_matches']] = features.apply(find_sleutelwoorden_UF,axis=1)
 print('Done with sleutelwoorden')
 
-features.to_csv(str(path / 'validation_features.csv'))
+#features.to_csv(str(path / 'validation_features.csv'))
 
 # Check the broader terms and top terms
 features[['BT_TT_jaccard','BT_TT_lenmatches','BT_TT_matches']] = features.apply(find_BT_TT,axis=1)
@@ -189,7 +192,7 @@ print('Done with BT_TT')
 features[['title_no_stop_jaccard','title_no_stop_lenmatches','title_no_stop_matches']] = features.apply(find_title_no_stop,axis=1)
 print('Done with title no stop')
 
-features.to_csv(str(path / 'validation_features.csv'))
+#features.to_csv(str(path / 'validation_features.csv'))
 
 # Check the first paragraph of the CBS content without stopwords
 features[['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches','1st_paragraph_no_stop_matches']] = features.apply(find_1st_paragraph_no_stop,axis=1)
@@ -202,7 +205,7 @@ scale = 7
 features['date_diff_score'] = features.apply(date_comparison,args=(offset,scale),axis=1)
 print('Done with diff_dates')
 
-features.to_csv(str(path / 'validation_features.csv'))
+#features.to_csv(str(path / 'validation_features.csv'))
 
 # Check all the CBS numbers 
 features['child_numbers'] = features.apply(regex,args=('content_child',),axis=1)
@@ -216,12 +219,36 @@ print('Done with similarity')
 features['match'] = features.apply(determine_matches,axis=1)
 print('Done with determining matches')
 
-features.to_csv(str(path / 'validation_features.csv'))
+#features.to_csv(str(path / 'validation_features.csv'))
 
 # load the model from disk
-loaded_model = pickle.load(open(str(path / 'scripts/best_random_forest_classifier_with_numbers_similarity.pkl'), 'rb'))
-y_proba = loaded_model.predict_proba(features)
-y_pred = loaded_model.predict(features)
+loaded_model = pickle.load(open(str(modelpath / 'best_random_forest_classifier_with_numbers_similarity.pkl'), 'rb'))
+
+# Select only the featurecolumns
+feature_cols = ['feature_link_score',
+                'feature_whole_title',
+                'sleutelwoorden_jaccard',
+                'sleutelwoorden_lenmatches',
+                'BT_TT_jaccard',
+                'BT_TT_lenmatches',
+                'title_no_stop_jaccard',
+                'title_no_stop_lenmatches',
+                '1st_paragraph_no_stop_jaccard',
+                '1st_paragraph_no_stop_lenmatches',
+                'date_diff_score',
+                'title_similarity',
+                'content_similarity',
+                'numbers_jaccard',
+                'numbers_lenmatches']
+to_predict = features[feature_cols]
+to_predict[to_predict.isna()] = 0
+y_proba = loaded_model.predict_proba(to_predict)
+y_pred = loaded_model.predict(to_predict)
+
+b = datetime.datetime.now()
+c=b-a
+print(c)
+
 
 def resultClassifierfloat(row):
     threshold = 0.5
