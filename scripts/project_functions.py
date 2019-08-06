@@ -99,6 +99,8 @@ def find_sleutelwoorden_UF(row):
     Get jaccard score and number of matches based on the sleutelwoorden and highest taxonomy synomyms
     '''
     content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
+    if type(row['taxonomies']) == float:
+        return pd.Series([0,0,{''}])
     try:
         taxonomies = row['taxonomies'].split(',')
         # extend list of sleutelwoorden, or append, depending on the size of the synonyms. 
@@ -117,6 +119,8 @@ def find_BT_TT(row):
     Get jaccard score and number of matches based on the Broader Terms and Top Terms of the sleutelwoorden    
     '''
     content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
+    if type(row['BT_TT']) == float:
+        return pd.Series([0,0,{''}])
     try:
         taxonomies = row['BT_TT'].split(' ')
         matches = {x for x in taxonomies if x in content}
@@ -130,6 +134,8 @@ def find_title_no_stop(row):
     Get jaccard score and number of matches based on the words in the introduction
     '''
     content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
+    if type(row['title_without_stopwords']) == float:
+        return pd.Series([0,0,{''}])
     try:
         taxonomies = row['title_without_stopwords'].split(' ')
         matches = {x for x in taxonomies if x in content}
@@ -143,6 +149,8 @@ def find_1st_paragraph_no_stop(row):
     Get jaccard score and number of matches based on the words in the first paragraph of the parent
     '''
     content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
+    if type(row['first_paragraph_without_stopwords']) == float:
+        return pd.Series([0,0,{''}])
     try:
         taxonomies = row['first_paragraph_without_stopwords'].split(' ')
         matches = {x for x in taxonomies if x in content}
