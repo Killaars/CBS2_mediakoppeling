@@ -129,7 +129,6 @@ children = children[['id',
                      'content_child_no_stop']]
 
 print(np.shape(parents),np.shape(children))
-children = children[:10]
 a=datetime.datetime.now()
 #-------------------------------#
 # Rules before the actual model #
@@ -172,7 +171,7 @@ features.rename(columns={'title_x': 'title_parent',
                          'publish_date_date_y': 'publish_date_date_child'}, inplace=True)
 print('Done with adding extra data')
 
-#features.to_csv(str(path / 'validation_features.csv'))
+features.to_csv(str(path / 'validation_features_full.csv'))
 
 # Check if the whole CBS title exists in child article
 features['feature_whole_title'] = features.apply(find_title,axis=1)
@@ -180,22 +179,25 @@ print('Done with whole title')
 
 # Check the CBS sleutelwoorden and the Synonyms
 features[['sleutelwoorden_jaccard','sleutelwoorden_lenmatches','sleutelwoorden_matches']] = features.apply(find_sleutelwoorden_UF,axis=1)
+features.loc[features['taxonomies'].isnull(), ['sleutelwoorden_jaccard','sleutelwoorden_lenmatches']] = 0
 print('Done with sleutelwoorden')
 
-#features.to_csv(str(path / 'validation_features.csv'))
+features.to_csv(str(path / 'validation_features_full.csv'))
 
 # Check the broader terms and top terms
 features[['BT_TT_jaccard','BT_TT_lenmatches','BT_TT_matches']] = features.apply(find_BT_TT,axis=1)
+features.loc[features['BT_TT'].isnull(), ['BT_TT_jaccard','BT_TT_lenmatches']] = 0
 print('Done with BT_TT')
 
 # Check the CBS title without stopwords
 features[['title_no_stop_jaccard','title_no_stop_lenmatches','title_no_stop_matches']] = features.apply(find_title_no_stop,axis=1)
 print('Done with title no stop')
 
-#features.to_csv(str(path / 'validation_features.csv'))
+features.to_csv(str(path / 'validation_features_full.csv'))
 
 # Check the first paragraph of the CBS content without stopwords
 features[['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches','1st_paragraph_no_stop_matches']] = features.apply(find_1st_paragraph_no_stop,axis=1)
+features.loc[features['first_paragraph_without_stopwords'].isnull(), ['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches']] = 0
 print('Done with paragraph no stop')
 
 # Determine the date score
@@ -205,7 +207,7 @@ scale = 7
 features['date_diff_score'] = features.apply(date_comparison,args=(offset,scale),axis=1)
 print('Done with diff_dates')
 
-#features.to_csv(str(path / 'validation_features.csv'))
+features.to_csv(str(path / 'validation_features_full.csv'))
 
 # Check all the CBS numbers 
 features['child_numbers'] = features.apply(regex,args=('content_child',),axis=1)
@@ -219,7 +221,7 @@ print('Done with similarity')
 features['match'] = features.apply(determine_matches,axis=1)
 print('Done with determining matches')
 
-#features.to_csv(str(path / 'validation_features.csv'))
+features.to_csv(str(path / 'validation_features_full.csv'))
 
 # load the model from disk
 loaded_model = pickle.load(open(str(modelpath / 'best_random_forest_classifier_with_numbers_similarity.pkl'), 'rb'))
@@ -279,4 +281,4 @@ print("Accuracy: ",metrics.accuracy_score(results['label'], y_pred))
 features['prediction']=y_pred
 features['predicted_nomatch']=y_proba[:,0]
 features['predicted_match']=y_proba[:,1]
-features.to_csv(str(path / 'validation_features.csv'))
+features.to_csv(str(path / 'validation_features.csv_full'))
