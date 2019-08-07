@@ -75,42 +75,20 @@ y = features['match'] # Target variable
 # Split dataset into training set and test set
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
 
-#X_test.to_csv(str(path / 'X_test2.csv'))
-#y_test.to_csv(str(path / 'y_test.csv'))
-#sys.exit()
-
-print('Selecting X and y mini...')
-X_train_mini = X_train
-y_train_mini = y_train
-
-
 print('fitting 20')
 # First create the base model to tune
-rf = RandomForestClassifier(n_estimators = 2030,max_features='auto',max_depth=20,min_samples_split = 2)
+rf = RandomForestClassifier(n_estimators = 100,
+                            min_samples_split = 10,
+                            min_samples_leaf = 5,
+                            max_depth=10,
+                            max_leaf_nodes = None)
 # Fit the model
-rf.fit(X_train_mini, y_train_mini)
+rf.fit(X_train, y_train)
 
 evaluation(rf, 'best_grid_forest', X_test, y_test)
 
-print('fitting default')
-base_model = RandomForestClassifier(n_estimators = 10, random_state = 42)
-base_model.fit(X_train_mini, y_train_mini)
+#import pickle
+## save the classifier
+#with open('best_random_forest_classifier_with_numbers_similarity_fitted_20.pkl', 'wb') as fid:
+#    pickle.dump(rf, fid)
 
-evaluation(base_model, 'default_random_forest', X_test, y_test)
-
-import pickle
-# save the classifier
-with open('best_random_forest_classifier_with_numbers_similarity_fitted_20.pkl', 'wb') as fid:
-    pickle.dump(rf, fid)
-print('fitting 6')
-# First create the base model to tune
-rf_6 = RandomForestClassifier(n_estimators = 2030,max_features='auto',max_depth=6,min_samples_split = 2)
-# Fit the model
-rf_6.fit(X_train_mini, y_train_mini)
-
-evaluation(rf_6, 'best_grid_forest_6', X_test, y_test)
-
-import pickle
-# save the classifier
-with open('best_random_forest_classifier_with_numbers_similarity_fitted_6.pkl', 'wb') as fid:
-    pickle.dump(rf_6, fid)
