@@ -485,7 +485,7 @@ def treeFunction(features,output):
     import pydotplus
     
     dot_data = StringIO()
-    export_graphviz(clf, out_file=dot_data,  
+    export_graphviz(loaded_model, out_file=dot_data,  
                     filled=True, rounded=True,
                     special_characters=True,feature_names = feature_cols,class_names=['0','1'])
     graph = pydotplus.graph_from_dot_data(dot_data.getvalue())  
@@ -646,7 +646,7 @@ X_test = pd.read_csv(str(path / 'data/solr/X_test.csv'),index_col=0)
 y_test = pd.read_csv(str(path / 'data/solr/y_test.csv'),index_col=0,header = None,names = ['label'])
 
 # load the model from disk
-loaded_model = pickle.load(open(str(path / 'scripts/best_random_forest_classifier_with_numbers_similarity.pkl'), 'rb'))
+loaded_model = pickle.load(open(str(path / 'scripts/best_random_forest_classifier_with_numbers_similarity_fitted_6.pkl'), 'rb'))
 y_proba = loaded_model.predict_proba(X_test)
 y_pred = loaded_model.predict(X_test)
 
@@ -694,34 +694,128 @@ X_test['predicted_nomatch']=y_proba[:,0]
 X_test['predicted_match']=y_proba[:,1]
 
 def top3_check(row,X_test,n):
-    child_id = row.index
+    child_id = row['index']
     # select all matches with specific child id
     to_check = X_test[X_test['child_id']==child_id]
     
     # sort based on match proba
-    to_check = to_check.sort_values(by=['predicted_match'])
+    to_check = to_check.sort_values(by=['predicted_match'],ascending=False)
     
     first_X = to_check.iloc[:n,:]
     # if first X values of predicted label have True in them and first values of annotated label also, then TP
     if (np.mean(first_X['prediction'])>0)&(np.mean(first_X['label'])>0):
-        return 'TP'
+        return pd.Series(['TP',np.mean(first_X['predicted_match'])])
     # if first X values of predicted label have True in them but first values of annotated label not , then FP
     if (np.mean(first_X['prediction'])>0)&(np.mean(first_X['label'])==0):
-        return 'FP'
+        return pd.Series(['FP',np.mean(first_X['predicted_match'])])
     # if first X values of predicted label have no True in them and first values of annotated label also only false, then TN
     if (np.mean(first_X['prediction'])==0)&(np.mean(first_X['label'])==0):
-        return 'TN'
+        return pd.Series(['TN',np.mean(first_X['predicted_match'])])
     # if first X values of predicted label have no True in them but first values of annotated label have a true, then FN
     if (np.mean(first_X['prediction'])==0)&(np.mean(first_X['label'])>0):
-        return 'FN'
+        return pd.Series(['FN',np.mean(first_X['predicted_match'])])
 
 # df with all child id's
 child_id_df = pd.DataFrame(index = X_test['child_id'].unique())
+child_id_df['index'] = child_id_df.index
 
-n = 3 # first X values
-child_id_df['confusion_matrix'] = child_id_df.apply(top3_check,args=(X_test,n),axis=1)
+n = 5 # first X values
+child_id_df[['confusion_matrix','score_top5']] = child_id_df.apply(top3_check,args=(X_test,n),axis=1)
+
+child_id_df_counts = child_id_df['confusion_matrix'].value_counts()
+
+print(child_id_df_counts)
+print('Precision: ',(child_id_df_counts.loc['TP'])/(child_id_df_counts.loc['TP']+child_id_df_counts.loc['FP']))
+print('Recall: ',(child_id_df_counts.loc['TP'])/(child_id_df_counts.loc['TP']+child_id_df_counts.loc['FN']))
+print("Accuracy: ",metrics.accuracy_score(y_test, y_pred))
 
 
+#%%
+print(child_id_df[['confusion_matrix','score_top5']].groupby('confusion_matrix').mean())
+
+#%%
+validation_features = pd.read_csv(str(path / 'data/solr/validation_features.csv'),index_col=0)
+feature_cols = ['feature_link_score',
+                'feature_whole_title',
+                'sleutelwoorden_jaccard',
+                'sleutelwoorden_lenmatches',
+                'BT_TT_jaccard',
+                'BT_TT_lenmatches',
+                'title_no_stop_jaccard',
+                'title_no_stop_lenmatches',
+                '1st_paragraph_no_stop_jaccard',
+                '1st_paragraph_no_stop_lenmatches',
+                'date_diff_score',
+                'title_similarity',
+                'content_similarity',
+                'numbers_jaccard',
+                'numbers_lenmatches']
+to_predict = validation_features[feature_cols]
+to_predict[to_predict.isna()] = 0
+to_predict['title_similarity'] = 0
+to_predict['content_similarity'] = 0
+y_proba = loaded_model.predict_proba(to_predict)
+y_pred = loaded_model.predict(to_predict)
+
+def resultClassifierfloat(row):
+    threshold = 0.5
+    if (row['prediction'] > threshold and row['label'] == True):
+        return 'TP'
+    if (row['prediction'] < threshold and row['label'] == False):
+        return 'TN'
+    if (row['prediction'] < threshold and row['label'] == True):
+        return 'FN'
+    if (row['prediction'] > threshold and row['label'] == False):
+        return 'FP'
+    
+validation_features['prediction']=y_pred
+validation_features['predicted_nomatch']=y_proba[:,0]
+validation_features['predicted_match']=y_proba[:,1]
+
+results = pd.DataFrame(index=validation_features.index)
+results['label']=validation_features['match'].values
+results['prediction']=y_pred
+results['predicted_nomatch']=y_proba[:,0]
+results['predicted_match']=y_proba[:,1]
+
+results['confusion_matrix'] = results.apply(resultClassifierfloat,axis=1)
+results_counts = results['confusion_matrix'].value_counts()
+
+print(results_counts)
+print('Precision: ',(results_counts.loc['TP'])/(results_counts.loc['TP']+results_counts.loc['FP']))
+print('Recall: ',(results_counts.loc['TP'])/(results_counts.loc['TP']+results_counts.loc['FN']))
+print("Accuracy: ",metrics.accuracy_score(results['label'], y_pred))
 
 
+#%%
+test =validation_features[validation_features['title_parent'] =='statline: geregistreerde misdrijven; wijken en buurten 2018']
+len(validation_features[validation_features['title_parent'].str.contains('vrije nieuwsgaring')==True])
+len(validation_features[validation_features['link'].str.contains('statline')==True])
 
+test = validation_features[validation_features['link'].str.contains('statline')!=True]
+test = test[test['link'].str.contains('opendata')!=True]
+test = test[test['title_parent'].str.contains('vrije nieuwsgaring')!=True]
+test = test[test['title_parent'].str.contains('tweet')!=True]
+test = test[test['title_parent'].str.contains('niet matchen')!=True]
+test = test[test['title_parent'].str.contains('officiële bekendmaking')!=True]
+
+#%%
+estimator = loaded_model.estimators_[5]
+
+from sklearn.tree import export_graphviz
+# Export as dot file
+export_graphviz(estimator, out_file='tree.dot', 
+                feature_names = feature_cols,
+                class_names = ['0','1'],
+                rounded = True, proportion = False, 
+                precision = 2, filled = True)
+
+# Convert to png using system command (requires Graphviz)
+from subprocess import call
+call(['dot', '-Tpng', 'tree.dot', '-o', 'tree.png', '-Gdpi=600'])
+
+#%%
+fp_test = fp[feature_cols]
+y_proba_fp = loaded_model.predict_proba(fp_test)
+fp['predicted_nomatch']=y_proba_fp[:,0]
+fp['predicted_match']=y_proba_fp[:,1]

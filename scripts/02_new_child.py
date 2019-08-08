@@ -1,6 +1,8 @@
 #%%
 import pandas as pd
 from pathlib import Path
+import pickle
+
 
 from project_functions import preprocessing_child,\
                                 find_link,\
@@ -13,18 +15,22 @@ from project_functions import preprocessing_child,\
                                 date_comparison,\
                                 regex,\
                                 find_numbers,\
-                                remove_stopwords_from_content
+                                remove_stopwords_from_content,\
+                                parallelize_on_rows,\
+                                similarity
 
 import recordlinkage
 from recordlinkage.index import Full
 #%%
+
+path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
+modelpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/scripts/')
+
 #---------------------------#
 # Reading and preprocessing #
 #---------------------------#
 
 # Read child
-path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
-modelpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/scripts/')
 children = pd.read_csv(str(path / 'related_children.csv'),index_col=0)
 
 # Preprocessing child
@@ -69,6 +75,9 @@ children = children[['id',
 #-------------------------------#
 # Rules before the actual model #
 #-------------------------------#
+# Select only first 10 to save time
+parents = parents[:10]
+children = children[:10]
 
 # Find CBS link in child article
 children.loc[:,'cbs_link'] = children.apply(find_link,axis=1)
@@ -143,21 +152,36 @@ print('Done with numbers')
 # Predict the CBS theme based on the content of the child
 
 # Determine the title and content similarity
+features[['title_similarity','content_similarity']] = parallelize_on_rows(features, similarity,4)
+print('Done with similarity')
 
 # Load the machine learning model
+loaded_model = pickle.load(open(str(modelpath / 'best_random_forest_classifier_with_numbers_similarity.pkl'), 'rb'))
 
 # Make the probalistic predictions
+# Select only the featurecolumns
+feature_cols = ['feature_link_score',
+                'feature_whole_title',
+                'sleutelwoorden_jaccard',
+                'sleutelwoorden_lenmatches',
+                'BT_TT_jaccard',
+                'BT_TT_lenmatches',
+                'title_no_stop_jaccard',
+                'title_no_stop_lenmatches',
+                '1st_paragraph_no_stop_jaccard',
+                '1st_paragraph_no_stop_lenmatches',
+                'date_diff_score',
+                'title_similarity',
+                'content_similarity',
+                'numbers_jaccard',
+                'numbers_lenmatches']
+to_predict = features[feature_cols]
+to_predict[to_predict.isna()] = 0
+y_proba = loaded_model.predict_proba(to_predict)
+
 
 # Return the most probable matches
 
-#%% Predict the CBS theme based on the content of the child
-import pickle
-from sklearn.feature_extraction.text import TfidfVectorizer
-tf=TfidfVectorizer()
-test = features.head(100)
-text_tf= tf.fit_transform(test['content_child'])
-clf = pickle.load(open(str(modelpath / 'MultiNB_tf.sav'), 'rb'))
 
-test.loc[:,'predicted_theme']= clf.predict(text_tf)
 
 
