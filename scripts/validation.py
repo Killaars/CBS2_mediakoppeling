@@ -130,49 +130,51 @@ children = children[['id',
 
 print(np.shape(parents),np.shape(children))
 a=datetime.datetime.now()
-#-------------------------------#
-# Rules before the actual model #
-#-------------------------------#
-
-# Find CBS link in child article
-children.loc[:,'cbs_link'] = children.apply(find_link,axis=1)
-
-# Check if CBS title is similar to child title
-
-# Check if child is duplicate of existing match
-
-#---------------------------------------#
-# Feature creation and model prediction #
-#---------------------------------------#
-# Indexation step
-indexer = recordlinkage.Index()
-indexer.add(Full())
-candidate_links = indexer.index(parents, children)
-print('Done with indexing')
-
-# Comparison step - creation of all possible matches
-compare_cl = recordlinkage.Compare()
-compare_cl.string('link', 'cbs_link', method='jarowinkler', threshold=0.93, label='feature_link_score')
-features = compare_cl.compute(candidate_links, parents, children)
-features.reset_index(inplace=True)
-print('Done with comparing')
-
-# Add extra data of parents and children to feature table and rename conflicting columns
-features.loc[:,'child_id'] = features.apply(find_id,args=(children,'level_1'),axis=1)
-features.loc[:,'parent_id'] = features.apply(find_id,args=(parents,'level_0'),axis=1)
-features = features.merge(parents, left_on = 'parent_id', right_on = 'id', how = 'left')
-features = features.merge(children, left_on = 'child_id', right_on = 'id', how = 'left')
-features.drop(columns = ['level_0','level_1','id_x','id_y'],inplace=True)
-features.rename(columns={'title_x': 'title_parent',
-                         'content_x': 'content_parent',
-                         'publish_date_date_x': 'publish_date_date_parent',
-                         'title_y': 'title_child',
-                         'content_y': 'content_child',
-                         'publish_date_date_y': 'publish_date_date_child'}, inplace=True)
-print('Done with adding extra data')
-
-features.to_csv(str(path / 'validation_features_full.csv'))
-
+##-------------------------------#
+## Rules before the actual model #
+##-------------------------------#
+#
+## Find CBS link in child article
+#children.loc[:,'cbs_link'] = children.apply(find_link,axis=1)
+#
+## Check if CBS title is similar to child title
+#
+## Check if child is duplicate of existing match
+#
+##---------------------------------------#
+## Feature creation and model prediction #
+##---------------------------------------#
+## Indexation step
+#indexer = recordlinkage.Index()
+#indexer.add(Full())
+#candidate_links = indexer.index(parents, children)
+#print('Done with indexing')
+#
+## Comparison step - creation of all possible matches
+#compare_cl = recordlinkage.Compare()
+#compare_cl.string('link', 'cbs_link', method='jarowinkler', threshold=0.93, label='feature_link_score')
+#features = compare_cl.compute(candidate_links, parents, children)
+#features.reset_index(inplace=True)
+#print('Done with comparing')
+#print(np.shape(features))
+#
+## Add extra data of parents and children to feature table and rename conflicting columns
+#features.loc[:,'child_id'] = features.apply(find_id,args=(children,'level_1'),axis=1)
+#features.loc[:,'parent_id'] = features.apply(find_id,args=(parents,'level_0'),axis=1)
+#features = features.merge(parents, left_on = 'parent_id', right_on = 'id', how = 'left')
+#features = features.merge(children, left_on = 'child_id', right_on = 'id', how = 'left')
+#features.drop(columns = ['level_0','level_1','id_x','id_y'],inplace=True)
+#features.rename(columns={'title_x': 'title_parent',
+#                         'content_x': 'content_parent',
+#                         'publish_date_date_x': 'publish_date_date_parent',
+#                         'title_y': 'title_child',
+#                         'content_y': 'content_child',
+#                         'publish_date_date_y': 'publish_date_date_child'}, inplace=True)
+#print('Done with adding extra data')
+#
+#features.to_csv(str(path / 'validation_features_full.csv'))
+print('loading_features...')
+features = pd.read_csv(str(path / 'validation_features_full.csv'),index_col=0)
 # Check if the whole CBS title exists in child article
 features['feature_whole_title'] = features.apply(find_title,axis=1)
 print('Done with whole title')

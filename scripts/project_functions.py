@@ -89,7 +89,9 @@ def find_title(row):
     '''
     Check if whole title is in the content of the child article
     '''
-    if row['title_parent'] in row['content_child']:
+    title = row['title_parent']
+    
+    if (title in row['content_child'])&(type(title) != float):
         return 1
     else:
         return 0

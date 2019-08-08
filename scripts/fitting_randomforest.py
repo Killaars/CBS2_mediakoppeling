@@ -67,25 +67,40 @@ feature_cols = ['feature_link_score',
                 'content_similarity',
                 'numbers_jaccard',
                 'numbers_lenmatches']
-X = features[feature_cols] # Features
-X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
-
+#X = features[feature_cols] # Features
+#X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
+X = features
 y = features['match'] # Target variable
+X['unique_id'] = X['parent_id'].astype(str)+'-'+X['child_id'].astype(str)
 
 # Split dataset into training set and test set
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
 
-print('fitting 20')
-# First create the base model to tune
-rf = RandomForestClassifier(n_estimators = 100,
-                            min_samples_split = 10,
-                            min_samples_leaf = 5,
-                            max_depth=10,
-                            max_leaf_nodes = None)
-# Fit the model
-rf.fit(X_train, y_train)
+#print(X_train[['parent_id','child_id','unique_id']].head())
+counter = 1
+for id in X_train['unique_id'].values:
+    if id in X_test['unique_id'].values:
+        print(id,'= number: ',counter)
+        counter+=1
 
-evaluation(rf, 'best_grid_forest', X_test, y_test)
+sys.exit()
+
+print('fitting...')
+
+bomen = np.arange(2,32,2)
+
+for boom in bomen:
+    print(boom)
+    # First create the base model to tune
+    rf = RandomForestClassifier(n_estimators = 40,
+                                min_samples_split = 10,
+                                min_samples_leaf = 5,
+                                max_depth=boom,
+                                max_leaf_nodes = None)
+    # Fit the model
+    rf.fit(X_train, y_train)
+    
+    evaluation(rf, 'best_grid_forest', X_test, y_test)
 
 #import pickle
 ## save the classifier
