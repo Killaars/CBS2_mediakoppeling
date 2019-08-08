@@ -175,34 +175,34 @@ a=datetime.datetime.now()
 #features.to_csv(str(path / 'validation_features_full.csv'))
 print('loading_features...')
 features = pd.read_csv(str(path / 'validation_features_full.csv'),index_col=0)
-# Check if the whole CBS title exists in child article
-features['feature_whole_title'] = features.apply(find_title,axis=1)
-print('Done with whole title')
-
-features.to_csv(str(path / 'validation_features_full.csv'))
+## Check if the whole CBS title exists in child article
+#features['feature_whole_title'] = features.apply(find_title,axis=1)
+#print('Done with whole title')
+#
+#features.to_csv(str(path / 'validation_features_full.csv'))
 
 # Check the CBS sleutelwoorden and the Synonyms
-features[['sleutelwoorden_jaccard','sleutelwoorden_lenmatches','sleutelwoorden_matches']] = features.apply(find_sleutelwoorden_UF,axis=1)
+features[['sleutelwoorden_jaccard','sleutelwoorden_lenmatches','sleutelwoorden_matches']] = parallelize_on_rows(features, find_sleutelwoorden_UF,75)
 features.loc[features['taxonomies'].isnull(), ['sleutelwoorden_jaccard','sleutelwoorden_lenmatches']] = 0
 print('Done with sleutelwoorden')
 
 features.to_csv(str(path / 'validation_features_full.csv'))
 
 # Check the broader terms and top terms
-features[['BT_TT_jaccard','BT_TT_lenmatches','BT_TT_matches']] = features.apply(find_BT_TT,axis=1)
+features[['BT_TT_jaccard','BT_TT_lenmatches','BT_TT_matches']] = parallelize_on_rows(features, find_BT_TT,75)
 features.loc[features['BT_TT'].isnull(), ['BT_TT_jaccard','BT_TT_lenmatches']] = 0
 print('Done with BT_TT')
 
 features.to_csv(str(path / 'validation_features_full.csv'))
 
 # Check the CBS title without stopwords
-features[['title_no_stop_jaccard','title_no_stop_lenmatches','title_no_stop_matches']] = features.apply(find_title_no_stop,axis=1)
+features[['title_no_stop_jaccard','title_no_stop_lenmatches','title_no_stop_matches']] = parallelize_on_rows(features, find_title_no_stop,75)
 print('Done with title no stop')
 
 features.to_csv(str(path / 'validation_features_full.csv'))
 
 # Check the first paragraph of the CBS content without stopwords
-features[['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches','1st_paragraph_no_stop_matches']] = features.apply(find_1st_paragraph_no_stop,axis=1)
+features[['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches','1st_paragraph_no_stop_matches']] = parallelize_on_rows(features, find_1st_paragraph_no_stop,75)
 features.loc[features['first_paragraph_without_stopwords'].isnull(), ['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches']] = 0
 print('Done with paragraph no stop')
 
@@ -219,7 +219,7 @@ features.to_csv(str(path / 'validation_features_full.csv'))
 
 # Check all the CBS numbers 
 features['child_numbers'] = features.apply(regex,args=('content_child',),axis=1)
-features[['numbers_jaccard','numbers_lenmatches','numbers_matches']] = features.apply(find_numbers,axis=1)
+features[['numbers_jaccard','numbers_lenmatches','numbers_matches']] = parallelize_on_rows(features, find_numbers,75)
 print('Done with numbers')
 
 features.to_csv(str(path / 'validation_features_full.csv'))
