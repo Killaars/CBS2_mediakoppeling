@@ -69,21 +69,15 @@ feature_cols = ['feature_link_score',
                 'numbers_lenmatches']
 #X = features[feature_cols] # Features
 #X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
-X = features
+features['unique_id'] = features['parent_id'].astype(str)+'-'+features['child_id'].astype(str)
+features = features.drop_duplicates(subset='unique_id',keep='first')
+X = features[feature_cols] # Features
+X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
 y = features['match'] # Target variable
-X['unique_id'] = X['parent_id'].astype(str)+'-'+X['child_id'].astype(str)
 
 # Split dataset into training set and test set
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
-
-#print(X_train[['parent_id','child_id','unique_id']].head())
-counter = 1
-for id in X_train['unique_id'].values:
-    if id in X_test['unique_id'].values:
-        print(id,'= number: ',counter)
-        counter+=1
-
-sys.exit()
+#X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=123)
 
 print('fitting...')
 

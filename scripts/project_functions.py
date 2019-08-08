@@ -94,15 +94,20 @@ def find_title(row):
     '''
     title = row['title_parent']
     
-    if (title in row['content_child'])&(type(title) != float):
-        return 1
-    else:
+    try:
+        if (title in row['content_child'])&(type(title) != float):
+            return 1
+        else:
+            return 0
+    except:
         return 0
     
 def find_sleutelwoorden_UF(row):
     '''
     Get jaccard score and number of matches based on the sleutelwoorden and highest taxonomy synomyms
     '''
+    if type(row['content_child']) == float:
+        return pd.Series([0,0,{''}])
     content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
     if type(row['taxonomies']) == float:
         return pd.Series([0,0,{''}])
@@ -123,6 +128,8 @@ def find_BT_TT(row):
     '''
     Get jaccard score and number of matches based on the Broader Terms and Top Terms of the sleutelwoorden    
     '''
+    if type(row['content_child']) == float:
+        return pd.Series([0,0,{''}])
     content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
     if type(row['BT_TT']) == float:
         return pd.Series([0,0,{''}])
@@ -138,6 +145,8 @@ def find_title_no_stop(row):
     '''
     Get jaccard score and number of matches based on the words in the introduction
     '''
+    if type(row['content_child']) == float:
+        return pd.Series([0,0,{''}])
     content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
     if type(row['title_without_stopwords']) == float:
         return pd.Series([0,0,{''}])
@@ -153,6 +162,8 @@ def find_1st_paragraph_no_stop(row):
     '''
     Get jaccard score and number of matches based on the words in the first paragraph of the parent
     '''
+    if type(row['content_child']) == float:
+        return pd.Series([0,0,{''}])
     content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
     if type(row['first_paragraph_without_stopwords']) == float:
         return pd.Series([0,0,{''}])
