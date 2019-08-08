@@ -179,6 +179,8 @@ features = pd.read_csv(str(path / 'validation_features_full.csv'),index_col=0)
 features['feature_whole_title'] = features.apply(find_title,axis=1)
 print('Done with whole title')
 
+features.to_csv(str(path / 'validation_features_full.csv'))
+
 # Check the CBS sleutelwoorden and the Synonyms
 features[['sleutelwoorden_jaccard','sleutelwoorden_lenmatches','sleutelwoorden_matches']] = features.apply(find_sleutelwoorden_UF,axis=1)
 features.loc[features['taxonomies'].isnull(), ['sleutelwoorden_jaccard','sleutelwoorden_lenmatches']] = 0
@@ -191,6 +193,8 @@ features[['BT_TT_jaccard','BT_TT_lenmatches','BT_TT_matches']] = features.apply(
 features.loc[features['BT_TT'].isnull(), ['BT_TT_jaccard','BT_TT_lenmatches']] = 0
 print('Done with BT_TT')
 
+features.to_csv(str(path / 'validation_features_full.csv'))
+
 # Check the CBS title without stopwords
 features[['title_no_stop_jaccard','title_no_stop_lenmatches','title_no_stop_matches']] = features.apply(find_title_no_stop,axis=1)
 print('Done with title no stop')
@@ -201,6 +205,8 @@ features.to_csv(str(path / 'validation_features_full.csv'))
 features[['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches','1st_paragraph_no_stop_matches']] = features.apply(find_1st_paragraph_no_stop,axis=1)
 features.loc[features['first_paragraph_without_stopwords'].isnull(), ['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches']] = 0
 print('Done with paragraph no stop')
+
+features.to_csv(str(path / 'validation_features_full.csv'))
 
 # Determine the date score
 features['date_diff_days'] = abs(features['publish_date_date_parent']-features['publish_date_date_child']).dt.days.astype(float)
@@ -216,9 +222,13 @@ features['child_numbers'] = features.apply(regex,args=('content_child',),axis=1)
 features[['numbers_jaccard','numbers_lenmatches','numbers_matches']] = features.apply(find_numbers,axis=1)
 print('Done with numbers')
 
+features.to_csv(str(path / 'validation_features_full.csv'))
+
 # Determine the title and content similarity
 features[['title_similarity','content_similarity']] = parallelize_on_rows(features, similarity,75)
 print('Done with similarity')
+
+features.to_csv(str(path / 'validation_features_full.csv'))
 
 features['match'] = features.apply(determine_matches,axis=1)
 print('Done with determining matches')
