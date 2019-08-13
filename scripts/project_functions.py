@@ -205,15 +205,11 @@ def find_numbers(row):
         return pd.Series([0,0,{''}])
     
 def similarity(row,nlp):
-    from project_functions import remove_stopwords_from_content
     try:
-        # remove stopwords
-        row.loc[:,'title_child_nostop'] = row.apply(remove_stopwords_from_content, args=('title_child',),axis=1)
-        row.loc[:,'content_child_nostop'] = row.apply(remove_stopwords_from_content, args=('content_child',),axis=1)
         title_parent = nlp(row['title_without_stopwords'])
-        title_child = nlp(row['title_child_nostop'])
+        title_child = nlp(row['title_child_no_stop'])
         content_parent = nlp(row['content_without_stopwords'])
-        content_child = nlp(row['content_child_nostop'])
+        content_child = nlp(row['content_child_no_stop'])
         
         title_similarity = title_parent.similarity(title_child)
         content_similarity = content_parent.similarity(content_child)
