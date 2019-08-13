@@ -1,14 +1,11 @@
 #%%
 import pandas as pd
-import numpy as np
 from pathlib import Path
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
-
-import sys
 
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
 path = Path('/data/lkls/CBS_2_mediakoppeling/data/solr/')
@@ -50,7 +47,7 @@ def evaluation(classifier, name, X_test, y_test):
     print(metrics.classification_report(y_test, y_pred))
 #%%
 print('Loading features...')
-features = pd.read_csv(str(path / 'new_features_march_april_2019_with_all_matches_similarity.csv'),index_col=0)
+features = pd.read_csv(str(path / 'new_features_all_matches_random_non_matches.csv'),index_col=0)
 #%%
 print('Selecting X and y...')
 feature_cols = ['feature_link_score',
@@ -68,31 +65,19 @@ feature_cols = ['feature_link_score',
                 'content_similarity',
                 'numbers_jaccard',
                 'numbers_lenmatches']
-#X = features[feature_cols] # Features
-X = features # Features
-#X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
-
+X = features[feature_cols] # Features
+X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
 y = features['match'] # Target variable
 
 # Split dataset into training set and test set
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
-
-X_test.to_csv(str(path / 'X_test2.csv'))
-y_test.to_csv(str(path / 'y_test.csv'))
-sys.exit()
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=123)
 
 print('Selecting X and y mini...')
 X_train_mini = X_train
 y_train_mini = y_train
 
-# Create the parameter grid based on the values found by the random search
-#{'n_estimators': 2000, 'min_samples_split': 2, 'min_samples_leaf': 1, 'max_features': 'auto', 'max_depth': 20, 'class_weight': None, 'bootstrap': True}
-#Found by first gridsearch, scored lower
-#{'n_estimators': 2050, 'min_samples_split': 2, 'min_samples_leaf': 1, 'max_features': 'auto', 'max_depth': 20, 'class_weight': None, 'bootstrap': True}
-
-
+#NOG AANPASSEN OP BASIS VAN RESULTATEN RANDOM_SEARCH
 param_grid = {'n_estimators': [2000,2030,2050],
-               'max_features': ['auto'],
                'criterion': ['gini'],
                'max_depth': [18,20,22],
                'min_samples_split': [2],
@@ -104,8 +89,7 @@ param_grid = {'n_estimators': [2000,2030,2050],
 # Use the param grid to search for best hyperparameters
 # First create the base model to tune
 rf = RandomForestClassifier()
-# Random search of parameters, using 3 fold cross validation, 
-# search across 100 different combinations, and use all available cores
+# Random search of parameters, using 3 fold cross validation and use 75 available cores 
 grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, verbose=1, n_jobs = 75)
 # Fit the random search model
 grid_search.fit(X_train_mini, y_train_mini)
@@ -113,7 +97,7 @@ print(grid_search.best_params_)
 best_grid = grid_search.best_estimator_
 evaluation(best_grid, 'best_grid_forest', X_test, y_test)
 
-base_model = RandomForestClassifier(n_estimators = 10, random_state = 42)
+base_model = RandomForestClassifier(random_state = 42)
 base_model.fit(X_train_mini, y_train_mini)
 
 evaluation(base_model, 'default_random_forest', X_test, y_test)

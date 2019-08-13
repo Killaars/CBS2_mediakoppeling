@@ -49,10 +49,7 @@ def evaluation(classifier, name, X_test, y_test):
     print(metrics.classification_report(y_test, y_pred))
 #%%
 print('Loading features...')
-features = pd.read_csv(str(path / 'new_features_march_april_2019_with_all_matches_similarity.csv'),index_col=0)
-# Remove very old non matches that are classified as match
-features = features[features['date_diff_days']<=54]
-features = features[features['title_parent']!='niet matchen']
+features = pd.read_csv(str(path / 'new_features_all_matches_random_non_matches.csv'),index_col=0)
 #%%
 print('Selecting X and y...')
 feature_cols = ['feature_link_score',
@@ -70,8 +67,6 @@ feature_cols = ['feature_link_score',
                 'content_similarity',
                 'numbers_jaccard',
                 'numbers_lenmatches']
-features['unique_id'] = features['parent_id'].astype(str)+'-'+features['child_id'].astype(str)
-features = features.drop_duplicates(subset='unique_id',keep='first')
 X = features[feature_cols] # Features
 X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
 y = features['match'] # Target variable
@@ -83,7 +78,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_
 print('fitting...')
 clf = DecisionTreeClassifier(max_depth=6)
 clf.fit(X_train, y_train)
-evaluation(clf, 'best_grid_forest', X_test, y_test)
+evaluation(clf, 'default_tree_6depth', X_test, y_test)
 import pickle
 # save the classifier
 with open('default_tree.pkl' , 'wb') as fid:
