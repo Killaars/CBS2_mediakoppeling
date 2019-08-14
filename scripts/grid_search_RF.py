@@ -78,13 +78,13 @@ X_train_mini = X_train
 y_train_mini = y_train
 
 #NOG AANPASSEN OP BASIS VAN RESULTATEN RANDOM_SEARCH
-param_grid = {'n_estimators': [2000,2030,2050],
+param_grid = {'n_estimators': [140,145,150,155,160],
                'criterion': ['gini'],
-               'max_depth': [18,20,22],
+               'max_depth': [35,40,45,50],
                'min_samples_split': [2],
                'max_leaf_nodes' : [None],
                'min_samples_leaf': [1],
-               'bootstrap': [True],
+               'bootstrap': [True,False],
                'class_weight':[None]}
 
 # Use the param grid to search for best hyperparameters
@@ -105,5 +105,5 @@ evaluation(base_model, 'default_random_forest', X_test, y_test)
 
 import pickle
 # save the classifier
-with open('best_random_forest_classifier_with_numbers_similarity.pkl', 'wb') as fid:
+with open('best_random_forest_classifier.pkl', 'wb') as fid:
     pickle.dump(best_grid, fid)
