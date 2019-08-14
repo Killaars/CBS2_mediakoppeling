@@ -165,6 +165,7 @@ def find_1st_paragraph_no_stop(row):
     if type(row['content_child']) == float:
         return pd.Series([0,0,{''}])
     content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
+    content = re.sub(r'cbs','',row['content_child'])                             # Remove cbs
     if type(row['first_paragraph_without_stopwords']) == float:
         return pd.Series([0,0,{''}])
     try:
@@ -606,8 +607,8 @@ def expand_parents_df(parents):
     '''
     Function to expand the parents_df with new cells, to be done when new CBS articles are added to the parents database
     '''
-    taxonomie_df = pd.read_csv('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/taxonomie_df.csv',index_col=0)
-    #taxonomie_df = pd.read_csv('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/taxonomie_df.csv',index_col=0)
+    #taxonomie_df = pd.read_csv('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/taxonomie_df.csv',index_col=0)
+    taxonomie_df = pd.read_csv('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/taxonomie_df.csv',index_col=0)
     taxonomie_df[taxonomie_df=='999'] = None
     taxonomie_df[taxonomie_df=='999.0'] = None
     parents.loc[:,'found_synonyms'] = parents.apply(find_synoniemen, args=(taxonomie_df,),axis=1)
