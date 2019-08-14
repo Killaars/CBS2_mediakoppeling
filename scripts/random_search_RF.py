@@ -71,7 +71,7 @@ X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
 y = features['match'] # Target variable
 
 # Split dataset into training set and test set
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=123)
 
 print('Selecting X and y mini...')
 X_train_mini = X_train
@@ -80,13 +80,11 @@ y_train_mini = y_train
 # Number of trees in random forest
 n_estimators = [10,25,50,100,150,200,300,400,500,750,1000,1500,2000]
 # Maximum number of levels in tree
-max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
-max_depth.append(None)
-max_depth.extend([3,5,7,15])
+max_depth = [3,5,7,10,15,20,30,40,50,75,100,None]
 # Minimum number of samples required to split a node
-min_samples_split = [2, 5, 10]
+min_samples_split = [2,5,10,20]
 # Minimum number of samples required at each leaf node
-min_samples_leaf = [1, 2, 4]
+min_samples_leaf = [1,2,4,8]
 # Method of selecting samples for training each tree
 bootstrap = [True, False]
 # weights = 
@@ -105,7 +103,7 @@ random_grid = {'n_estimators': n_estimators,
 rf = RandomForestClassifier()
 # Random search of parameters, using 3 fold cross validation, 
 # search across 250 different combinations, and use all available cores
-rf_random = RandomizedSearchCV(estimator = rf, param_distributions = random_grid, n_iter = 250, cv = 3, verbose=2, random_state=42, n_jobs = 75)
+rf_random = RandomizedSearchCV(estimator = rf, param_distributions = random_grid, n_iter = 250, cv = 3, verbose=2, random_state=42, n_jobs = -1)
 # Fit the random search model
 rf_random.fit(X_train_mini, y_train_mini)
 print(rf_random.best_params_)

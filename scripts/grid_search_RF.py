@@ -71,7 +71,7 @@ X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
 y = features['match'] # Target variable
 
 # Split dataset into training set and test set
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=123)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=123)
 
 print('Selecting X and y mini...')
 X_train_mini = X_train
@@ -91,7 +91,7 @@ param_grid = {'n_estimators': [2000,2030,2050],
 # First create the base model to tune
 rf = RandomForestClassifier()
 # Random search of parameters, using 3 fold cross validation and use 75 available cores 
-grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, verbose=1, n_jobs = 75)
+grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, verbose=1, n_jobs = -1)
 # Fit the random search model
 grid_search.fit(X_train_mini, y_train_mini)
 print(grid_search.best_params_)
