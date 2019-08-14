@@ -1,5 +1,6 @@
 #%%
 import pandas as pd
+import numpy as np
 from pathlib import Path
 
 from sklearn.ensemble import RandomForestClassifier
@@ -48,10 +49,10 @@ def evaluation(classifier, name, X_test, y_test):
 #%%
 print('Loading features...')
 features = pd.read_csv(str(path / 'new_features_all_matches_random_non_matches.csv'),index_col=0)
+print(np.shape(features))
 #%%
 print('Selecting X and y...')
-feature_cols = ['feature_link_score',
-                'feature_whole_title',
+feature_cols = ['feature_whole_title',
                 'sleutelwoorden_jaccard',
                 'sleutelwoorden_lenmatches',
                 'BT_TT_jaccard',

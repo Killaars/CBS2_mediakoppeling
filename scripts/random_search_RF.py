@@ -49,10 +49,10 @@ def evaluation(classifier, name, X_test, y_test):
 #%%
 print('Loading features...')
 features = pd.read_csv(str(path / 'new_features_all_matches_random_non_matches.csv'),index_col=0)
+print(np.shape(features))
 #%%
 print('Selecting X and y...')
-feature_cols = ['feature_link_score',
-                'feature_whole_title',
+feature_cols = ['feature_whole_title',
                 'sleutelwoorden_jaccard',
                 'sleutelwoorden_lenmatches',
                 'BT_TT_jaccard',
@@ -61,7 +61,11 @@ feature_cols = ['feature_link_score',
                 'title_no_stop_lenmatches',
                 '1st_paragraph_no_stop_jaccard',
                 '1st_paragraph_no_stop_lenmatches',
-                'date_diff_score']
+                'date_diff_score',
+                'title_similarity',
+                'content_similarity',
+                'numbers_jaccard',
+                'numbers_lenmatches']
 X = features[feature_cols] # Features
 X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
 y = features['match'] # Target variable
