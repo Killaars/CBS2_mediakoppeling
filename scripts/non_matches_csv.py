@@ -6,14 +6,12 @@ import os,sys
 import re
 import nltk
 import datetime
-import recordlinkage
-from recordlinkage.index import Full
 import zipfile
 
-import dask.dataframe as dd
-from dask.multiprocessing import get
-
 nltk.download('punkt')
+import spacy
+wordvectorpath = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/nl_vectors_wiki_lg/')
+nlp = spacy.load(wordvectorpath)
 
 from project_functions import preprocessing_child, \
                                 preprocessing_parent,\
@@ -67,8 +65,6 @@ print(len(unique_id))
             
 #%%
 #VERWIJDER DE NIET MATCHES VAN DE PARENTS EN DE OUDE CHILDREN            
-# remove unique ids that are matches
-unique_id = [x for x in unique_id if x not in matches['unique_id'].values]
 import random
 random_sample = random.sample(unique_id, 413507) # Select random unique values to add to 500.000 total records
 
@@ -97,8 +93,11 @@ parents = parents[['id',
 
 
 children.loc[:,'title_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('title',),axis=1)
+print('title done')
 children.loc[:,'content_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('content',),axis=1)
+print('content done')
 children.loc[:,'cbs_link'] = children.apply(find_link,axis=1)
+print('link done')
 children = children[['id',
                      'publish_date_date',
                      'title',
@@ -160,12 +159,12 @@ non_matches[['numbers_jaccard','numbers_lenmatches','numbers_matches']] = non_ma
 print('Done with numbers')
 
 # Determine the title and content similarity
-non_matches[['title_similarity','content_similarity']] = parallelize_on_rows(non_matches, similarity,4)
+non_matches[['title_similarity','content_similarity']] = non_matches.apply(similarity,args=(nlp,),axis=1)
 print('Done with similarity')
 
 non_matches['match'] = non_matches.apply(determine_matches,axis=1)
 print('Done with determining matches')
 print(non_matches['match'].value_counts())
 
-matches = pd.read_csv(str(path / 'new_features_march_april_2019_with_all_matches.csv'),index_col=0)
+#matches = pd.read_csv(str(path / 'new_features_march_april_2019_with_all_matches.csv'),index_col=0)
 non_matches.to_csv(str(path / 'non_matches.csv'))

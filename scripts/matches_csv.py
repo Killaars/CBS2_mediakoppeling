@@ -27,7 +27,9 @@ from project_functions import preprocessing_child, \
                                 remove_stopwords_from_content,\
                                 similarity,\
                                 regex,\
-                                find_numbers
+                                find_numbers,\
+                                parallelize_on_rows
+
 #%% Select all matches and randomly select non matches
 path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
 path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
@@ -35,6 +37,8 @@ path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 matches = pd.read_csv(str(path / 'new_features_march_april_2019_with_all_matches.csv'),index_col=0)
 matches = matches[matches['match']==True]
 matches['unique_id'] = matches['parent_id'].astype(str)+'-'+matches['child_id'].astype(str)
+matches.loc[:,'title_child_no_stop'] = matches.apply(remove_stopwords_from_content,args=('title_child',),axis=1)
+matches.loc[:,'content_child_no_stop'] = matches.apply(remove_stopwords_from_content,args=('content_child',),axis=1)
 
 # Determine the title and content similarity
 import spacy
