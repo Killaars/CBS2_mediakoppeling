@@ -4,6 +4,7 @@ import numpy as np
 import pickle
 from pathlib import Path
 import datetime
+import sys
 
 import recordlinkage
 from recordlinkage.index import Full
@@ -27,7 +28,8 @@ from project_functions import preprocessing_child,\
                                 regex,\
                                 find_numbers,\
                                 remove_stopwords_from_content,\
-                                determine_matches
+                                determine_matches,\
+                                determine_vrijenieuwsgaring
 import spacy
 wordvectorpath = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/nl_vectors_wiki_lg/')
 nlp = spacy.load(wordvectorpath)
@@ -65,43 +67,37 @@ path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
 path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 modelpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/scripts/')
 modelpath = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/scripts/')
-children = pd.read_csv(str(path / 'validation_children.csv'),nrows=3000)
 
-# Preprocessing child
+# Read all parents
+parents = pd.read_csv(str(path / 'validation_parents.csv'))
+all_parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0)
+parents = pd.concat((parents,all_parents))
+parents = parents.drop_duplicates(subset='id')
+
+parents = parents[parents['id']!=158123] # remove vrije nieuwsgaring
+parents = parents[parents['id']!=160418] # remove 'niet matchen' oude parents
+
+parents.dropna(subset=['related_children'],inplace=True)
+
+# statline uit parents
+parents = parents[parents['title'].str.contains('statline')==False]
+
+parents = preprocessing_parent(parents)
+parents = expand_parents_df(parents)
+
+# Select the children
+children = pd.read_csv(str(path / 'validation_children.csv'))
 children = preprocessing_child(children)
+children.dropna(subset=['related_parents'],inplace=True)
+children['vrijenieuwsgaring'] = children.apply(determine_vrijenieuwsgaring,axis=1)
+children = children[children['vrijenieuwsgaring']==False]
+children = children.sample(n=3000,random_state=123)
 
 # Remove stopwords from title and content
 children.loc[:,'title_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('title',),axis=1)
 children.loc[:,'content_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('content',),axis=1)
 
-#%%
-# Read all parents
-
-parents = pd.read_csv(str(path / 'validation_parents.csv'))
-parents = preprocessing_parent(parents)
-parents = expand_parents_df(parents)
-
-all_parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0)
-all_parents = preprocessing_parent(all_parents)
-all_parents = expand_parents_df(all_parents)
-
-all_parents.loc[:,'publish_date_date'] = pd.to_datetime(all_parents.loc[:,'publish_date_date'])
-parents.loc[:,'publish_date_date'] = pd.to_datetime(parents.loc[:,'publish_date_date'])
-
-all_parents = all_parents[['id',
-                   'publish_date_date',
-                   'title',
-                   'content',
-                   'link',
-                   'taxonomies',
-                   'Gebruik_UF',
-                   'BT_TT',
-                   'first_paragraph_without_stopwords',
-                   'title_without_stopwords',
-                   'content_without_stopwords',
-                   'parent_numbers',
-                   'related_children']]
-
+# Select useful columns
 parents = parents[['id',
                    'publish_date_date',
                    'title',
@@ -116,9 +112,6 @@ parents = parents[['id',
                    'parent_numbers',
                    'related_children']]
 
-#%%
-parents = pd.concat((parents,all_parents))
-parents = parents.drop_duplicates(subset='id')
 #%%
 children = children[['id',
                      'publish_date_date',
@@ -232,6 +225,7 @@ features['match'] = features.apply(determine_matches,axis=1)
 print('Done with determining matches')
 
 features.to_csv(str(path / 'validation_features_full.csv'))
+sys.exit()
 
 # load the model from disk
 loaded_model = pickle.load(open(str(modelpath / 'best_random_forest_classifier_with_numbers_similarity.pkl'), 'rb'))
