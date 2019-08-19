@@ -29,7 +29,11 @@ from project_functions import preprocessing_child, \
                                 find_title_no_stop,\
                                 find_1st_paragraph_no_stop,\
                                 determine_matches,\
-                                date_comparison
+                                date_comparison,\
+                                remove_stopwords_from_content,\
+                                similarity,\
+                                regex,\
+                                find_numbers
 
 #%%
 
@@ -646,7 +650,7 @@ X_test = pd.read_csv(str(path / 'data/solr/X_test.csv'),index_col=0)
 y_test = pd.read_csv(str(path / 'data/solr/y_test.csv'),index_col=0,header = None,names = ['label'])
 
 # load the model from disk
-loaded_model = pickle.load(open(str(path / 'scripts/best_random_forest_classifier_with_numbers_similarity_fitted_6.pkl'), 'rb'))
+loaded_model = pickle.load(open(str(path / 'scripts/default_tree.pkl'), 'rb'))
 y_proba = loaded_model.predict_proba(X_test)
 y_pred = loaded_model.predict(X_test)
 
@@ -680,7 +684,7 @@ print("Accuracy: ",metrics.accuracy_score(y_test, y_pred))
 #%%
 importances = list(loaded_model.feature_importances_)
 
-feature_importances = [(feature, round(importance, 2)) for feature, importance in zip(X_test.columns, importances)]
+feature_importances = [(feature, round(importance, 2)) for feature, importance in zip(feature_cols, importances)]
 # Sort the feature importances by most important first
 feature_importances = sorted(feature_importances, key = lambda x: x[1], reverse = True)
 # Print out the feature and importances 
@@ -734,9 +738,11 @@ print("Accuracy: ",metrics.accuracy_score(y_test, y_pred))
 print(child_id_df[['confusion_matrix','score_top5']].groupby('confusion_matrix').mean())
 
 #%%
-validation_features = pd.read_csv(str(path / 'data/solr/validation_features.csv'),index_col=0)
-feature_cols = ['feature_link_score',
-                'feature_whole_title',
+validation_features = pd.read_csv(str(path / 'validation_features_full.csv'),index_col=0)
+validation_features.loc[validation_features['BT_TT'].isnull(), ['BT_TT_jaccard','BT_TT_lenmatches']] = 0
+validation_features.loc[validation_features['taxonomies'].isnull(), ['sleutelwoorden_jaccard','sleutelwoorden_lenmatches']] = 0
+validation_features.loc[validation_features['first_paragraph_without_stopwords'].isnull(), ['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches']] = 0
+feature_cols = ['feature_whole_title',
                 'sleutelwoorden_jaccard',
                 'sleutelwoorden_lenmatches',
                 'BT_TT_jaccard',
@@ -752,8 +758,6 @@ feature_cols = ['feature_link_score',
                 'numbers_lenmatches']
 to_predict = validation_features[feature_cols]
 to_predict[to_predict.isna()] = 0
-to_predict['title_similarity'] = 0
-to_predict['content_similarity'] = 0
 y_proba = loaded_model.predict_proba(to_predict)
 y_pred = loaded_model.predict(to_predict)
 
@@ -800,22 +804,309 @@ test = test[test['title_parent'].str.contains('niet matchen')!=True]
 test = test[test['title_parent'].str.contains('officiële bekendmaking')!=True]
 
 #%%
-estimator = loaded_model.estimators_[5]
-
+import pickle
+loaded_model = pickle.load(open(str('/Users/rwsla/Lars/CBS_2_mediakoppeling/scripts/default_tree.pkl'), 'rb'))
 from sklearn.tree import export_graphviz
-# Export as dot file
-export_graphviz(estimator, out_file='tree.dot', 
-                feature_names = feature_cols,
-                class_names = ['0','1'],
-                rounded = True, proportion = False, 
-                precision = 2, filled = True)
-
-# Convert to png using system command (requires Graphviz)
-from subprocess import call
-call(['dot', '-Tpng', 'tree.dot', '-o', 'tree.png', '-Gdpi=600'])
+from sklearn.externals.six import StringIO  
+import pydotplus
+dot_data = StringIO()
+export_graphviz(loaded_model, out_file=dot_data,  
+                filled=True, rounded=True,
+                special_characters=True,feature_names = feature_cols,class_names=['0','1'])
+graph = pydotplus.graph_from_dot_data(dot_data.getvalue())  
+graph.write_png('tree_new.png')
 
 #%%
-fp_test = fp[feature_cols]
-y_proba_fp = loaded_model.predict_proba(fp_test)
-fp['predicted_nomatch']=y_proba_fp[:,0]
-fp['predicted_match']=y_proba_fp[:,1]
+estimator=loaded_model
+n_nodes = estimator.tree_.node_count
+children_left = estimator.tree_.children_left
+children_right = estimator.tree_.children_right
+feature = estimator.tree_.feature
+threshold = estimator.tree_.threshold
+
+# The tree structure can be traversed to compute various properties such
+# as the depth of each node and whether or not it is a leaf.
+node_depth = np.zeros(shape=n_nodes, dtype=np.int64)
+is_leaves = np.zeros(shape=n_nodes, dtype=bool)
+stack = [(0, -1)]  # seed is the root node id and its parent depth
+while len(stack) > 0:
+    node_id, parent_depth = stack.pop()
+    node_depth[node_id] = parent_depth + 1
+
+    # If we have a test node
+    if (children_left[node_id] != children_right[node_id]):
+        stack.append((children_left[node_id], parent_depth + 1))
+        stack.append((children_right[node_id], parent_depth + 1))
+    else:
+        is_leaves[node_id] = True
+
+print("The binary tree structure has %s nodes and has "
+      "the following tree structure:"
+      % n_nodes)
+for i in range(n_nodes):
+    if is_leaves[i]:
+        print("%snode=%s leaf node." % (node_depth[i] * "\t", i))
+    else:
+        print("%snode=%s test node: go to node %s if X[:, %s] <= %s else to "
+              "node %s."
+              % (node_depth[i] * "\t",
+                 i,
+                 children_left[i],
+                 feature[i],
+                 threshold[i],
+                 children_right[i],
+                 ))
+print()
+
+# First let's retrieve the decision path of each sample. The decision_path
+# method allows to retrieve the node indicator functions. A non zero element of
+# indicator matrix at the position (i, j) indicates that the sample i goes
+# through the node j.
+blue_blox_test = blue_box[feature_cols]
+node_indicator = estimator.decision_path(blue_blox_test)
+
+# Similarly, we can also have the leaves ids reached by each sample.
+
+leave_id = estimator.apply(blue_blox_test)
+
+# Now, it's possible to get the tests that were used to predict a sample or
+# a group of samples. First, let's make it for the sample.
+
+# HERE IS WHAT YOU WANT
+sample_id = 0
+node_index = node_indicator.indices[node_indicator.indptr[sample_id]:
+                                    node_indicator.indptr[sample_id + 1]]
+
+print('Rules used to predict sample %s: ' % sample_id)
+for node_id in node_index:
+
+    if leave_id[sample_id] == node_id:  # <-- changed != to ==
+        #continue # <-- comment out
+        print("leaf node {} reached, no decision here".format(leave_id[sample_id])) # <--
+
+    else: # < -- added else to iterate through decision nodes
+        if (blue_blox_test.iloc[sample_id, feature[node_id]] <= threshold[node_id]):
+            threshold_sign = "<="
+        else:
+            threshold_sign = ">"
+
+        print("decision id node %s : (X[%s, %s] (= %s) %s %s)"
+              % (node_id,
+                 sample_id,
+                 feature[node_id],
+                 blue_blox_test.iloc[sample_id, feature[node_id]], # <-- changed i to sample_id
+                 threshold_sign,
+                 threshold[node_id]))
+        
+####################################################################
+#%% Select all matches and randomly select non matches
+path = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/')
+
+matches = pd.read_csv(str(path / 'new_features_march_april_2019_with_all_matches.csv'),index_col=0)
+matches = matches[matches['match']==True]
+matches['unique_id'] = matches['parent_id'].astype(str)+'-'+matches['child_id'].astype(str)
+
+#%%
+parents = pd.read_csv(str(path / 'related_parents_full.csv'),index_col=0)
+parents = preprocessing_parent(parents)
+parents = expand_parents_df(parents)
+children = pd.read_csv(str(path / 'related_children.csv'),index_col=0,nrows=5)
+children = preprocessing_child(children)
+
+#%%
+parents = parents[parents['id']!=158123] # remove vrije nieuwsgaring
+parents = parents[parents['id']!=160418] # remove 'niet matchen' oude parents
+test1 = parents['id'].astype(str).values
+test2 = children['id'].astype(str).values
+
+test1 = test1[:3]
+test2 = test2[:3]
+unique_id = []
+
+for i in test1:
+    unique_id.extend([i + '-' + s for s in test2])
+print(len(unique_id))
+            
+#%%
+#VERWIJDER DE NIET MATCHES VAN DE PARENTS EN DE OUDE CHILDREN            
+# remove unique ids that are matches
+# unique_id = [x for x in unique_id if x not in matches['unique_id'].values]
+import random
+random_sample = random.sample(unique_id, 9) # Select random unique values to add to 500.000 total records
+
+# Add unique ids to dataframe
+non_matches = pd.DataFrame({'unique_id':random_sample})
+
+# Split in parents and children
+non_matches = non_matches['unique_id'].str.split(pat='-',expand=True)
+non_matches.columns = ['parent_id','child_id']
+non_matches['unique_id'] = random_sample
+
+# Select relevant columns froms parents and children
+parents = parents[['id',
+                   'publish_date_date',
+                   'title',
+                   'content',
+                   'link',
+                   'taxonomies',
+                   'Gebruik_UF',
+                   'BT_TT',
+                   'first_paragraph_without_stopwords',
+                   'title_without_stopwords',
+                   'content_without_stopwords',
+                   'parent_numbers',
+                   'related_children']]
+
+
+children.loc[:,'title_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('title',),axis=1)
+children.loc[:,'content_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('content',),axis=1)
+children.loc[:,'cbs_link'] = children.apply(find_link,axis=1)
+children = children[['id',
+                     'publish_date_date',
+                     'title',
+                     'content',
+                     'related_parents',
+                     'title_child_no_stop',
+                     'content_child_no_stop',
+                     'cbs_link']]
+
+# Add data from parents and children
+non_matches['parent_id'] = non_matches['parent_id'].astype(int)
+non_matches['child_id'] = non_matches['child_id'].astype(int)
+non_matches = non_matches.merge(parents,how='left',left_on='parent_id',right_on='id')
+non_matches = non_matches.merge(children,how='left',left_on='child_id',right_on='id')
+
+# Remove and rename unnescessary columns
+non_matches.drop(columns = ['id_x','id_y'],inplace=True)
+non_matches.rename(columns={'title_x': 'title_parent',
+                         'content_x': 'content_parent',
+                         'publish_date_date_x': 'publish_date_date_parent',
+                         'title_y': 'title_child',
+                         'content_y': 'content_child',
+                         'publish_date_date_y': 'publish_date_date_child'}, inplace=True)
+#%%
+# Add extra features
+# Check if the whole CBS title exists in child article
+non_matches['feature_whole_title'] = non_matches.apply(find_title,axis=1)
+print('Done with whole title')
+
+# Check the CBS sleutelwoorden and the Synonyms
+non_matches[['sleutelwoorden_jaccard','sleutelwoorden_lenmatches','sleutelwoorden_matches']] = non_matches.apply(find_sleutelwoorden_UF,axis=1)
+non_matches.loc[non_matches['taxonomies'].isnull(), ['sleutelwoorden_jaccard','sleutelwoorden_lenmatches']] = 0
+print('Done with sleutelwoorden')
+
+# Check the broader terms and top terms
+non_matches[['BT_TT_jaccard','BT_TT_lenmatches','BT_TT_matches']] = non_matches.apply(find_BT_TT,axis=1)
+non_matches.loc[non_matches['BT_TT'].isnull(), ['BT_TT_jaccard','BT_TT_lenmatches']] = 0
+print('Done with BT_TT')
+
+# Check the CBS title without stopwords
+non_matches[['title_no_stop_jaccard','title_no_stop_lenmatches','title_no_stop_matches']] = non_matches.apply(find_title_no_stop,axis=1)
+print('Done with title no stop')
+
+# Check the first paragraph of the CBS content without stopwords
+non_matches[['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches','1st_paragraph_no_stop_matches']] = non_matches.apply(find_1st_paragraph_no_stop,axis=1)
+non_matches.loc[non_matches['first_paragraph_without_stopwords'].isnull(), ['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches']] = 0
+print('Done with paragraph no stop')
+
+# Determine the date score
+non_matches['date_diff_days'] = abs(non_matches['publish_date_date_parent']-non_matches['publish_date_date_child']).dt.days.astype(float)
+offset = 0
+scale = 7
+non_matches['date_diff_score'] = non_matches.apply(date_comparison,args=(offset,scale),axis=1)
+print('Done with diff_dates')
+
+# Check all the CBS numbers 
+non_matches['child_numbers'] = non_matches.apply(regex,args=('content_child',),axis=1)
+non_matches[['numbers_jaccard','numbers_lenmatches','numbers_matches']] = non_matches.apply(find_numbers,axis=1)
+print('Done with numbers')
+
+# Determine the title and content similarity
+import spacy
+wordvectorpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/nl_vectors_wiki_lg/')
+nlp = spacy.load(wordvectorpath)
+non_matches[['title_similarity','content_similarity']] = non_matches.apply(similarity2,args=(nlp,),axis=1)
+print('Done with similarity')
+
+non_matches['match'] = non_matches.apply(determine_matches,axis=1)
+print('Done with determining matches')
+print(non_matches['match'].value_counts())
+
+#%%
+non_matches = pd.read_csv(str(path / 'non_matches.csv'),index_col=0)
+matches = pd.read_csv(str(path / 'matches.csv'),index_col=0)
+all_matches = pd.read_csv(str(path / 'new_features_all_matches_random_non_matches.csv'),index_col=0)
+
+# columns checken
+matches = matches.drop(['feature_link_score'],axis=1)
+
+# mergen
+all_matches = pd.concat((matches,non_matches),sort=False)
+all_matches.reset_index(inplace=True)
+all_matches.drop(['index'],axis=1,inplace=True)
+
+# duplicates eruit 327!
+all_matches.drop_duplicates(subset='unique_id',inplace=True)
+
+# parent_id = child_id eruit
+all_matches = all_matches[all_matches['parent_id']!=all_matches['child_id']]
+
+# statline uit parents
+all_matches = all_matches[all_matches['content_parent'].str.contains('statline')==False]
+
+
+# nans van matches vervangen tot 0
+all_matches.loc[all_matches['taxonomies'].isnull(), ['sleutelwoorden_jaccard','sleutelwoorden_lenmatches']] = 0
+all_matches.loc[all_matches['BT_TT'].isnull(), ['BT_TT_jaccard','BT_TT_lenmatches']] = 0
+all_matches.loc[all_matches['first_paragraph_without_stopwords'].isnull(), ['1st_paragraph_no_stop_jaccard','1st_paragraph_no_stop_lenmatches']] = 0
+
+# naar vroege records kijken
+all_matches = all_matches[all_matches['parent_id']!=158123] # remove vrije nieuwsgaring
+all_matches = all_matches[all_matches['parent_id']!=160418] # remove 'niet matchen' oude parents
+
+# Officiële bekendmakingen eruit --> waar publish date parent is not null
+all_matches = all_matches[~all_matches['publish_date_date_parent'].isnull()]
+
+# saven
+all_matches.to_csv(str(path / 'new_features_all_matches_random_non_matches.csv'))
+# bomen trainen --> normale boom bekijken!
+ 
+#%%groupen op matches en naar de verschillende features kijken
+test_cols = [   'feature_whole_title',
+                'sleutelwoorden_jaccard',
+                'sleutelwoorden_lenmatches',
+                'BT_TT_jaccard',
+                'BT_TT_lenmatches',
+                'title_no_stop_jaccard',
+                'title_no_stop_lenmatches',
+                '1st_paragraph_no_stop_jaccard',
+                '1st_paragraph_no_stop_lenmatches',
+                'date_diff_score',
+                'title_similarity',
+                'content_similarity',
+                'numbers_jaccard',
+                'numbers_lenmatches',
+                'match']
+grouped_scores_m = all_matches[test_cols][all_matches['match']==True].describe()
+grouped_scores_nm = all_matches[test_cols][all_matches['match']==False].describe()
+
+#%%
+results = pd.read_csv(str(path / 'validation_features_notTN.csv'),index_col=0)
+#%%
+# remove statline
+
+# remove vrijenieuwsgaring
+from project_functions import determine_vrijenieuwsgaring
+results['vrijenieuwsgaring']=results.apply(determine_vrijenieuwsgaring,axis=1)
+results = results[results['vrijenieuwsgaring']==False]
+
+# jaccard 0 , date 1? dan geen match
+results['jac_total'] = results['sleutelwoorden_jaccard']+\
+                        results['BT_TT_jaccard']+\
+                        results['title_no_stop_jaccard']+\
+                        results['1st_paragraph_no_stop_jaccard']+\
+                        results['numbers_jaccard']
+results = results[results['jac_total']>0.1]
+
+# remove parents withouth children?
+results.dropna(subset=['related_children'],inplace=True)
