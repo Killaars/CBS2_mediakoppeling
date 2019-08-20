@@ -29,8 +29,10 @@ from project_functions import preprocessing_child,\
                                 find_numbers,\
                                 remove_stopwords_from_content,\
                                 determine_matches,\
-                                determine_vrijenieuwsgaring
+                                determine_vrijenieuwsgaring,\
+                                remove_numbers
 import spacy
+wordvectorpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/nl_vectors_wiki_lg/')
 wordvectorpath = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/nl_vectors_wiki_lg/')
 nlp = spacy.load(wordvectorpath)
                                 
@@ -77,13 +79,15 @@ parents = parents.drop_duplicates(subset='id')
 parents = parents[parents['id']!=158123] # remove vrije nieuwsgaring
 parents = parents[parents['id']!=160418] # remove 'niet matchen' oude parents
 
+# Drop parents with empty children and empty dates
 parents.dropna(subset=['related_children'],inplace=True)
+parents.dropna(subset=['publish_date_date'],inplace=True)
 
 # statline uit parents
 parents = parents[parents['title'].str.contains('statline')==False]
 
 parents = preprocessing_parent(parents)
-parents = expand_parents_df(parents)
+#parents = expand_parents_df(parents)
 
 # Select the children
 children = pd.read_csv(str(path / 'validation_children.csv'))
@@ -91,11 +95,15 @@ children = preprocessing_child(children)
 children.dropna(subset=['related_parents'],inplace=True)
 children['vrijenieuwsgaring'] = children.apply(determine_vrijenieuwsgaring,axis=1)
 children = children[children['vrijenieuwsgaring']==False]
-children = children.sample(n=3000,random_state=123)
+children = children.sample(n=1,random_state=123)
+
+# select numbers from children
+children.loc[:,'child_numbers'] = children.apply(regex,args=('content',),axis=1)
+children.loc[:,'content_no_numbers'] = children.apply(remove_numbers,args=('content',),axis=1)
 
 # Remove stopwords from title and content
 children.loc[:,'title_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('title',),axis=1)
-children.loc[:,'content_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('content',),axis=1)
+children.loc[:,'content_child_no_stop'] = children.apply(remove_stopwords_from_content,args=('content_no_numbers',),axis=1)
 
 # Select useful columns
 parents = parents[['id',
@@ -119,7 +127,8 @@ children = children[['id',
                      'content',
                      'related_parents',
                      'title_child_no_stop',
-                     'content_child_no_stop']]
+                     'content_child_no_stop',
+                     'child_numbers']]
 
 print(np.shape(parents),np.shape(children))
 a=datetime.datetime.now()
@@ -171,7 +180,7 @@ features['feature_whole_title'] = features.apply(find_title,axis=1)
 print('Done with whole title')
 #
 features.to_csv(str(path / 'validation_features_full.csv'))
-nr_of_cores = 10
+nr_of_cores = 2
 # Check the CBS sleutelwoorden and the Synonyms
 features[['sleutelwoorden_jaccard','sleutelwoorden_lenmatches','sleutelwoorden_matches']] = features.apply(find_sleutelwoorden_UF,axis=1)
 features.loc[features['taxonomies'].isnull(), ['sleutelwoorden_jaccard','sleutelwoorden_lenmatches']] = 0
@@ -209,7 +218,7 @@ print('Done with diff_dates')
 features.to_csv(str(path / 'validation_features_full.csv'))
 
 # Check all the CBS numbers 
-features['child_numbers'] = features.apply(regex,args=('content_child',),axis=1)
+#features['child_numbers'] = features.apply(regex,args=('content_child',),axis=1)
 features[['numbers_jaccard','numbers_lenmatches','numbers_matches']] = features.apply(find_numbers,axis=1)
 print('Done with numbers')
 

@@ -32,6 +32,26 @@ def preprocessing_parent(parents):
     parents.loc[:,'content'] = parents.loc[:,'content'].str.replace('-',' ')
     parents.loc[:,'content'] = parents.loc[:,'content'].str.replace('  ',' ')
     parents['related_children'] = parents['related_children'].str.replace('matches/','').str.split(',')
+    
+    taxonomie_df = pd.read_csv('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/taxonomie_df.csv',index_col=0)
+    #taxonomie_df = pd.read_csv('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/taxonomie_df.csv',index_col=0)
+    taxonomie_df[taxonomie_df=='999'] = None
+    taxonomie_df[taxonomie_df=='999.0'] = None
+    parents.loc[:,'found_synonyms'] = parents.apply(find_synoniemen, args=(taxonomie_df,),axis=1)
+    parents.loc[:,'Gebruik_UF'] = [d[0] for d in parents['found_synonyms']]
+    parents.loc[:,'BT_TT'] = [d[1] for d in parents['found_synonyms']]
+    parents.drop(['found_synonyms'], axis=1)
+    
+    # select numbers from parent
+    parents.loc[:,'parent_numbers'] = parents.apply(regex,args=('content',),axis=1)
+    
+    parents.loc[:,'first_paragraph_without_stopwords'] = parents.apply(select_and_prepare_first_paragraph_of_CBS_article,axis=1)
+    parents.loc[:,'title_without_stopwords'] = parents.apply(select_and_prepare_title_of_CBS_article,axis=1)
+    
+    # remove numbers from parent
+    parents.loc[:,'content_no_numbers'] = parents.apply(remove_numbers,args=('content',),axis=1)    
+    # remove stopwords from content
+    parents.loc[:,'content_without_stopwords'] = parents.apply(remove_stopwords_from_content, args=('content_no_numbers',),axis=1)
     return parents
 
 def preprocessing_child(children):    
@@ -106,9 +126,9 @@ def find_sleutelwoorden_UF(row):
     '''
     Get jaccard score and number of matches based on the sleutelwoorden and highest taxonomy synomyms
     '''
-    if type(row['content_child']) == float:
+    if type(row['content_child_no_stop']) == float:
         return pd.Series([0,0,{''}])
-    content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
+    content = re.sub(r'[^\w\s]','',row['content_child_no_stop'])                             # Remove punctuation
     if type(row['taxonomies']) == float:
         return pd.Series([0,0,{''}])
     try:
@@ -128,9 +148,9 @@ def find_BT_TT(row):
     '''
     Get jaccard score and number of matches based on the Broader Terms and Top Terms of the sleutelwoorden    
     '''
-    if type(row['content_child']) == float:
+    if type(row['content_child_no_stop']) == float:
         return pd.Series([0,0,{''}])
-    content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
+    content = re.sub(r'[^\w\s]','',row['content_child_no_stop'])                             # Remove punctuation
     if type(row['BT_TT']) == float:
         return pd.Series([0,0,{''}])
     try:
@@ -145,9 +165,9 @@ def find_title_no_stop(row):
     '''
     Get jaccard score and number of matches based on the words in the introduction
     '''
-    if type(row['content_child']) == float:
+    if type(row['content_child_no_stop']) == float:
         return pd.Series([0,0,{''}])
-    content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
+    content = re.sub(r'[^\w\s]','',row['content_child_no_stop'])                             # Remove punctuation
     if type(row['title_without_stopwords']) == float:
         return pd.Series([0,0,{''}])
     try:
@@ -162,10 +182,10 @@ def find_1st_paragraph_no_stop(row):
     '''
     Get jaccard score and number of matches based on the words in the first paragraph of the parent
     '''
-    if type(row['content_child']) == float:
+    if type(row['content_child_no_stop']) == float:
         return pd.Series([0,0,{''}])
-    content = re.sub(r'[^\w\s]','',row['content_child'])                             # Remove punctuation
-    content = re.sub(r'cbs','',row['content_child'])                             # Remove cbs
+    content = re.sub(r'[^\w\s]','',row['content_child_no_stop'])                             # Remove punctuation
+    content = re.sub(r'cbs','',row['content_child_no_stop'])                             # Remove cbs
     if type(row['first_paragraph_without_stopwords']) == float:
         return pd.Series([0,0,{''}])
     try:
@@ -602,13 +622,24 @@ def regex(row, column = 'content'):
                 except:
                     matches_to_return.append(str(string))
     return list(set(matches_to_return))
+
+def remove_numbers(row, column = 'content'):
+    import re
+    import numpy as np
+    
+    if type(row[column]) != float:
+        regex = r"\b(nul)\b|\b([a-zA-Z]*(twin|der|veer|vijf|zes|zeven|acht|negen)tig|[a-zA-Z]*tien|twee|drie|vier|vijf|zes|zeven|acht|negen|elf|twaalf)( )?(honderd|duizend|miljoen|miljard|procent)?\b|\b(honderd|duizend|miljoen|miljard)\b|\b[-+]?[.|,]?[\d]+(?:,\d\d\d)*[\.|,]?\d*([.|,]\d+)*(?:[eE][-+]?\d+)?( )?(honderd|duizend|miljoen|miljard|procent|%)?|half (miljoen|miljard|procent)"
+        return re.sub(regex,'',row[column])
+    else:
+        return(np.nan)
+        
     
 def expand_parents_df(parents):
     '''
     Function to expand the parents_df with new cells, to be done when new CBS articles are added to the parents database
     '''
-    #taxonomie_df = pd.read_csv('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/taxonomie_df.csv',index_col=0)
-    taxonomie_df = pd.read_csv('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/taxonomie_df.csv',index_col=0)
+    taxonomie_df = pd.read_csv('/Users/rwsla/Lars/CBS_2_mediakoppeling/data/solr/taxonomie_df.csv',index_col=0)
+    #taxonomie_df = pd.read_csv('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/taxonomie_df.csv',index_col=0)
     taxonomie_df[taxonomie_df=='999'] = None
     taxonomie_df[taxonomie_df=='999.0'] = None
     parents.loc[:,'found_synonyms'] = parents.apply(find_synoniemen, args=(taxonomie_df,),axis=1)
