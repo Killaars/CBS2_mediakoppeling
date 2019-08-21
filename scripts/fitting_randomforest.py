@@ -50,8 +50,16 @@ def evaluation(classifier, name, X_test, y_test):
 #%%
 print('Loading features...')
 features = pd.read_csv(str(path / 'new_features_all_matches_random_non_matches.csv'),index_col=0)
-features = features[features['date_diff_days']<3]
+#features = features[features['date_diff_days']<3]
 print(np.shape(features))
+features['jac_total'] = features['sleutelwoorden_jaccard']+\
+                 features['BT_TT_jaccard']+\
+                 features['title_no_stop_jaccard']+\
+                 features['1st_paragraph_no_stop_jaccard']+\
+                 features['numbers_jaccard']
+
+features.loc[features['date_diff_days']<2,'date_binary'] = 1
+features.loc[features['date_diff_days']>=2,'date_binary'] = 0
 #%%
 print('Selecting X and y...')
 feature_cols = ['feature_whole_title',
@@ -60,23 +68,30 @@ feature_cols = ['feature_whole_title',
                 'BT_TT_jaccard',
                 'BT_TT_lenmatches',
                 'title_no_stop_jaccard',
-#                'date_diff_score',
                 'title_no_stop_lenmatches',
                 '1st_paragraph_no_stop_jaccard',
                 '1st_paragraph_no_stop_lenmatches',
+                'date_diff_score',
                 'title_similarity',
                 'content_similarity',
                 'numbers_jaccard',
                 'numbers_lenmatches']
+
+feature_cols = ['date_binary',
+                'jac_total',
+                'title_similarity',
+                'content_similarity',
+                'sleutelwoorden_lenmatches',
+                'BT_TT_lenmatches',
+                'title_no_stop_lenmatches',
+                '1st_paragraph_no_stop_lenmatches',
+                'numbers_lenmatches']
+
+
 X = features[feature_cols] # Features
 X[X.isna()] = 0 # Tree algorithm does not like nans or missing values
 y = features['match'] # Target variable
-
-X['jac_total'] = X['sleutelwoorden_jaccard']+\
-                 X['BT_TT_jaccard']+\
-                 X['title_no_stop_jaccard']+\
-                 X['1st_paragraph_no_stop_jaccard']+\
-                 X['numbers_jaccard']
+print(np.shape(X))
 
 # Split dataset into training set and test set
 #X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
@@ -93,6 +108,6 @@ evaluation(rf, 'default_grid_forest', X_test, y_test)
 
 import pickle
 # save the classifier
-with open('rf_150_est_5depth_t+2.pkl' , 'wb') as fid:
+with open('rf_minimodel_5depth.pkl' , 'wb') as fid:
     pickle.dump(rf, fid)
 

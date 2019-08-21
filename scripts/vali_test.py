@@ -21,11 +21,11 @@ features['jac_total'] = features['sleutelwoorden_jaccard']+\
 
 features.loc[features['date_diff_days']<2,'date_binary'] = 1
 features.loc[features['date_diff_days']>=2,'date_binary'] = 0
-
+features.loc[features['BT_TT'].isnull(), ['BT_TT_jaccard','BT_TT_lenmatches']] = 0
 
 # load the model from disk
 #loaded_model = pickle.load(open(str(modelpath / 'default_tree_t+2.pkl'), 'rb'))
-loaded_model = pickle.load(open(str(modelpath / 'minimodel_5depth.pkl'), 'rb'))
+loaded_model = pickle.load(open(str(modelpath / 'rf_minimodel_5depth.pkl'), 'rb'))
 
 print('predicting')
 # Select only the featurecolumns
@@ -46,7 +46,12 @@ feature_cols = ['feature_whole_title',
 feature_cols = ['date_binary',
                 'jac_total',
                 'title_similarity',
-                'content_similarity']
+                'content_similarity',
+                'sleutelwoorden_lenmatches',
+                'BT_TT_lenmatches',
+                'title_no_stop_lenmatches',
+                '1st_paragraph_no_stop_lenmatches',
+                'numbers_lenmatches']
 
 to_predict = features[feature_cols]
 to_predict[to_predict.isna()] = 0
@@ -55,13 +60,13 @@ y_pred = loaded_model.predict(to_predict)
 
 def resultClassifierfloat(row):
     threshold = 0.9
-    if (row['prediction'] > threshold and row['label'] == True):
+    if (row['predicted_match'] > threshold and row['label'] == True):
         return 'TP'
-    if (row['prediction'] < threshold and row['label'] == False):
+    if (row['predicted_match'] < threshold and row['label'] == False):
         return 'TN'
-    if (row['prediction'] < threshold and row['label'] == True):
+    if (row['predicted_match'] < threshold and row['label'] == True):
         return 'FN'
-    if (row['prediction'] > threshold and row['label'] == False):
+    if (row['predicted_match'] > threshold and row['label'] == False):
         return 'FP'
     
 results = pd.DataFrame(index=features.index)

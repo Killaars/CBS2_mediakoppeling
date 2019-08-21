@@ -80,7 +80,12 @@ feature_cols = ['feature_whole_title',
 feature_cols = ['date_binary',
                 'jac_total',
                 'title_similarity',
-                'content_similarity']
+                'content_similarity',
+                'sleutelwoorden_lenmatches',
+                'BT_TT_lenmatches',
+                'title_no_stop_lenmatches',
+                '1st_paragraph_no_stop_lenmatches',
+                'numbers_lenmatches']
 
 
 X = features[feature_cols] # Features
@@ -93,7 +98,7 @@ print(np.shape(X))
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=123)
 
 print('fitting...')
-clf = DecisionTreeClassifier(max_depth=5,min_samples_leaf=10)
+clf = DecisionTreeClassifier(max_depth=6,min_samples_leaf=10)
 clf.fit(X_train, y_train)
 evaluation(clf, 'minimodel_5depth', X_test, y_test)
 import pickle

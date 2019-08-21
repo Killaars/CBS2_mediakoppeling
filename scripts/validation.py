@@ -95,7 +95,7 @@ children = preprocessing_child(children)
 children.dropna(subset=['related_parents'],inplace=True)
 children['vrijenieuwsgaring'] = children.apply(determine_vrijenieuwsgaring,axis=1)
 children = children[children['vrijenieuwsgaring']==False]
-children = children.sample(n=1,random_state=123)
+children = children.sample(n=3000,random_state=123)
 
 # select numbers from children
 children.loc[:,'child_numbers'] = children.apply(regex,args=('content',),axis=1)
