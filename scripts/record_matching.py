@@ -804,17 +804,36 @@ test = test[test['title_parent'].str.contains('niet matchen')!=True]
 test = test[test['title_parent'].str.contains('officiële bekendmaking')!=True]
 
 #%%
+cols = ['feature_whole_title',
+ 'sleutelwoorden_jaccard',
+ 'sleutelwoorden_lenmatches',
+ 'BT_TT_jaccard',
+ 'BT_TT_lenmatches',
+ 'title_no_stop_jaccard',
+ 'title_no_stop_lenmatches',
+ '1st_paragraph_no_stop_jaccard',
+ '1st_paragraph_no_stop_lenmatches',
+# 'date_diff_score',
+ 'title_similarity',
+ 'content_similarity',
+ 'numbers_jaccard',
+ 'numbers_lenmatches',
+ 'jac_total']
+cols = ['date_binary',
+                'jac_total',
+                'title_similarity',
+                'content_similarity']
 import pickle
-loaded_model = pickle.load(open(str('/Users/rwsla/Lars/CBS_2_mediakoppeling/scripts/default_tree.pkl'), 'rb'))
+loaded_model = pickle.load(open(str('/Users/rwsla/Lars/CBS_2_mediakoppeling/scripts/minimodel_5depth.pkl'), 'rb'))
 from sklearn.tree import export_graphviz
 from sklearn.externals.six import StringIO  
 import pydotplus
 dot_data = StringIO()
 export_graphviz(loaded_model, out_file=dot_data,  
                 filled=True, rounded=True,
-                special_characters=True,feature_names = feature_cols,class_names=['0','1'])
+                special_characters=True,feature_names = cols,class_names=['0','1'])
 graph = pydotplus.graph_from_dot_data(dot_data.getvalue())  
-graph.write_png('tree_new.png')
+graph.write_png('minimodel_5depth.png')
 
 #%%
 estimator=loaded_model
@@ -1092,7 +1111,13 @@ grouped_scores_nm = all_matches[test_cols][all_matches['match']==False].describe
 
 #%%
 results = pd.read_csv(str(path / 'validation_features_notTN.csv'),index_col=0)
+fp = results[results['confusion_matrix']=='FP']
+tp = results[results['confusion_matrix']=='TP']
+fn = results[results['confusion_matrix']=='FN']
 #%%
+
+results.loc[:,'publish_date_date_parent'] = pd.to_datetime(results.loc[:,'publish_date_date_parent'])
+results.loc[:,'publish_date_date_child'] = pd.to_datetime(results.loc[:,'publish_date_date_child'])
 # remove statline
 
 # remove vrijenieuwsgaring
@@ -1110,3 +1135,156 @@ results = results[results['jac_total']>0.1]
 
 # remove parents withouth children?
 results.dropna(subset=['related_children'],inplace=True)
+
+# link no more than week in future
+#results = results[(results['publish_date_date_parent']-results['publish_date_date_child']).dt.days.astype(float)<7]
+
+#%%
+results['confusion_matrix'].value_counts()
+#%%
+tps=[]
+fps=[]
+fns=[]
+x = np.arange(0.5,1.005,0.005)
+#for cutoff in np.arange(0.5,1.05,0.05):
+for cutoff in x:
+    tps.append(len(results[(results['confusion_matrix']=='TP')&(results['predicted_match']>cutoff)]))
+    fps.append(len(results[(results['confusion_matrix']=='FP')&(results['predicted_match']>cutoff)]))
+    fns.append(len(results[(results['confusion_matrix']=='FN')&(results['predicted_nomatch']>cutoff)]))
+    #print(results[results['predicted_match']>=cutoff]['confusion_matrix'].value_counts())
+    
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+
+params = {'legend.fontsize': 'large',
+          'figure.figsize': (12, 12),
+         'axes.labelsize': 'large',
+         'axes.titlesize':'x-large',
+         'xtick.labelsize':'large',
+         'ytick.labelsize':'large'}
+
+plt.rcParams.update(params)
+
+# Create figure
+fig = plt.figure(figsize=[15,10])
+gs = GridSpec(2,1,width_ratios=[1],height_ratios=[1,1]) # rows, columns, width per column, height per column
+
+# First subplot
+ax1 = fig.add_subplot(gs[0])
+plt.scatter(x,tps,label='TP')
+plt.scatter(x,fps,label='FP')
+plt.scatter(x,fns,label='FN')
+ax1.set_ylim([0,4000])
+
+# Shrink current axis by 20%
+box = ax1.get_position()
+ax1.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+
+# Put a legend to the right of the current axis
+ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+# First subplot
+ax2 = fig.add_subplot(gs[1])
+plt.scatter(x,np.array(tps)/len(tp),label='TP')
+plt.scatter(x,np.array(fps)/len(fp),label='FP')
+plt.scatter(x,np.array(fns)/len(fn),label='FN')
+
+# Shrink current axis by 20%
+box = ax2.get_position()
+ax2.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+
+# Put a legend to the right of the current axis
+ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+plt.show()
+
+    
+#%%
+features = pd.read_csv(str(path / 'new_features_all_matches_random_non_matches.csv'),index_col=0)
+def keep_only_words(row):
+    return re.sub(r'[^\w\s]','',row['1st_paragraph_no_stop_matches'])
+
+test = features[['1st_paragraph_no_stop_matches']]
+test.loc[:,'1st_paragraph_no_stop_matches_words'] = test.apply(keep_only_words,axis=1)
+counts = test['1st_paragraph_no_stop_matches_words'].str.split(expand=True).stack().value_counts()
+counts.to_csv('/flashblade/lars_data/CBS/CBS2_mediakoppeling/counts.csv')
+counts_valid = pd.read_csv(str(path / '../../scripts/counts.csv'),index_col=0,header=None)
+
+def keep_only_words(row):
+    return re.sub(r'[^\w\s]','',row['numbers_matches'])
+
+test = features[['numbers_matches']]
+test.loc[:,'numbers_matches'] = test.apply(keep_only_words,axis=1)
+counts = test['numbers_matches'].str.split(expand=True).stack().value_counts()
+
+#%% Check if match is in top 5 per child
+to_check = results['child_id'].unique()
+check_df = pd.DataFrame(index=to_check)
+tp_on1 = []
+fp_on1 = []
+
+# sort results
+results.sort_values(by=['predicted_match'],ascending=False,inplace=True)
+
+for child_id in to_check:
+    temp_results = results[results['child_id'] == child_id]
+    top_n = temp_results.iloc[:5,:]
+    top_n.reset_index(inplace=True,drop=True)
+#    if child_id == 349099:
+#        break
+    if top_n['match'].mean()>0:
+        check_df.loc[child_id,'result'] = 'found'
+        check_df.loc[child_id,'number'] = str(top_n.loc[top_n['confusion_matrix']=='TP'].index.values+1)
+        if 'FN' in top_n['confusion_matrix'].values:
+            check_df.loc[child_id,'number'] = 'FN'
+        if top_n.loc[0,'confusion_matrix'] == 'TP':
+            tp_on1.append(top_n.loc[0,'predicted_match'])
+        if top_n.loc[0,'confusion_matrix'] == 'FP':
+            fp_on1.append(top_n.loc[0,'predicted_match'])
+            
+        
+    else:
+        
+        check_df.loc[child_id,'result'] = 'not found'
+        check_df.loc[child_id,'number'] = '5+'
+
+print(check_df['result'].value_counts())
+print(check_df['number'].value_counts())
+
+fp_on1_plot = []
+tp_on1_plot = [] 
+cutoff_list = np.arange(0.9,1.001,0.001)
+
+for cutoff in cutoff_list:
+    fp_on1_plot.append(len([x for x in fp_on1 if x>=cutoff]))
+    tp_on1_plot.append(len([x for x in tp_on1 if x>=cutoff]))
+    
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+
+params = {'legend.fontsize': 'large',
+          'figure.figsize': (12, 12),
+         'axes.labelsize': 'large',
+         'axes.titlesize':'x-large',
+         'xtick.labelsize':'large',
+         'ytick.labelsize':'large'}
+
+plt.rcParams.update(params)
+
+# Create figure
+fig = plt.figure(figsize=[15,10])
+gs = GridSpec(2,1,width_ratios=[1],height_ratios=[1,1]) # rows, columns, width per column, height per column
+
+# First subplot
+ax1 = fig.add_subplot(gs[0])
+plt.scatter(cutoff_list,tp_on1_plot,label='TP')
+plt.scatter(cutoff_list,fp_on1_plot,label='FP')
+ax1.set_ylim([0,1500])
+
+# Shrink current axis by 20%
+box = ax1.get_position()
+ax1.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+
+# Put a legend to the right of the current axis
+ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+plt.savefig(str(path / 'FP-TP_plot.png'))
+plt.show()
