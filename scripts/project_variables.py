@@ -1,0 +1,1 @@
+project_path = '/Users/rwsla/Lars/CBS_2_mediakoppeling_final/'
