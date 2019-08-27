@@ -49,7 +49,7 @@ def evaluation(classifier, name, X_test, y_test):
     print(metrics.classification_report(y_test, y_pred))
 #%%
 print('Loading features...')
-features = pd.read_csv(str(path / 'new_features_all_matches_random_non_matches.csv'),index_col=0)
+features = pd.read_csv(str(path / 'trainset_new.csv'),index_col=0)
 #features = features[features['date_diff_days']<3]
 print(np.shape(features))
 features['jac_total'] = features['sleutelwoorden_jaccard']+\

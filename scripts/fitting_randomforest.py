@@ -49,7 +49,7 @@ def evaluation(classifier, name, X_test, y_test):
     print(metrics.classification_report(y_test, y_pred))
 #%%
 print('Loading features...')
-features = pd.read_csv(str(path / 'new_features_all_matches_random_non_matches.csv'),index_col=0)
+features = pd.read_csv(str(path / 'trainset_new.csv'),index_col=0)
 #features = features[features['date_diff_days']<3]
 print(np.shape(features))
 features['jac_total'] = features['sleutelwoorden_jaccard']+\
@@ -100,7 +100,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_
 print('fitting...')
 
 # First create the base model to tune
-rf = RandomForestClassifier(n_estimators=150,max_depth=5,bootstrap=False,min_samples_leaf=10)
+rf = RandomForestClassifier(n_estimators=150,max_depth=4,bootstrap=False,min_samples_leaf=20)
 # Fit the model
 rf.fit(X_train, y_train)
 

@@ -6,8 +6,6 @@ from pathlib import Path
 import datetime
 import sys
 
-import recordlinkage
-from recordlinkage.index import Full
 
 from multiprocessing import  Pool
 from functools import partial
@@ -72,7 +70,7 @@ path = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/data/solr/')
 modelpath = Path('/Users/rwsla/Lars/CBS_2_mediakoppeling/scripts/')
 modelpath = Path('/flashblade/lars_data/CBS/CBS2_mediakoppeling/scripts/')
 
-all_matches = pd.read_csv(str(path / 'new_features_all_matches_random_non_matches.csv'),index_col=0,nrows=10)
+all_matches = pd.read_csv(str(path / 'new_features_all_matches_random_non_matches.csv'),index_col=0)
 all_matches.loc[:,'publish_date_date_parent'] = pd.to_datetime(all_matches.loc[:,'publish_date_date_parent'])
 all_matches.loc[:,'publish_date_date_child'] = pd.to_datetime(all_matches.loc[:,'publish_date_date_child'])
 #%%
