@@ -443,26 +443,26 @@ def process_taxonomie_database():
     f = open(str(libpath / "cbs-taxonomie-alfabetische-lijst.txt"), "r",encoding='utf-8')
     
     lines = [line.rstrip('\n') for line in f]
-    lines = lines[8:]
+    lines = lines[8:] #skip header
     lines = filter(None, lines) # remove elements that contain of empty strings
     df = pd.DataFrame()
     for x in lines:
-        if not x.startswith('	'):
+        if not x.startswith('	'): # no tab means word
             index = x
             for column in ['GEBRUIK','TT','UF','BT','RT','CBS English','NT','Historische notitie',
                            'Scope notitie','Code','Eurovoc','DF','EQ']:
-                df.loc[index,column] = 999
-        if x.startswith('	'):
+                df.loc[index,column] = 999 # empty value to be replaced later
+        if x.startswith('	'): # tab means other term of previous word
             column = x.split(':')[0][1:] # skip first two letters '/t'
             value = x.split(':')[1][1:] # second part is the word, starts with space
-            if df.loc[index,column] == 999:
+            if df.loc[index,column] == 999: # if first term for that word
                 df.loc[index,column] = value
-            else:
+            else: # second term for that word
                 df.loc[index,column] = value+', '+str(df.loc[index,column])
             
     f.close()
     df = df[['GEBRUIK','TT','UF','BT','RT','CBS English','NT','Historische notitie','Scope notitie']]
-    df[df==999] = None
+    df[df==999] = None # replace all empty cells
     df.to_csv(str(libpath / 'taxonomie_df.csv'))
     
     '''

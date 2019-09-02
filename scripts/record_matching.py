@@ -1252,12 +1252,12 @@ print(check_df['number'].value_counts())
 
 fp_on1_plot = []
 tp_on1_plot = [] 
-cutoff_list = np.arange(0.9,1.001,0.001)
+cutoff_list = np.arange(0.5,1.001,0.001)
 
 for cutoff in cutoff_list:
     fp_on1_plot.append(len([x for x in fp_on1 if x>=cutoff]))
     tp_on1_plot.append(len([x for x in tp_on1 if x>=cutoff]))
-    
+#%%    
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 
@@ -1278,13 +1278,16 @@ gs = GridSpec(2,1,width_ratios=[1],height_ratios=[1,1]) # rows, columns, width p
 ax1 = fig.add_subplot(gs[0])
 plt.scatter(cutoff_list,tp_on1_plot,label='TP')
 plt.scatter(cutoff_list,fp_on1_plot,label='FP')
-ax1.set_ylim([0,1500])
+ax1.set_ylim([0,2000])
+ax1.set_title('')
+ax1.set_ylabel('Number of matches')
+ax1.set_xlabel('Probability')
 
-# Shrink current axis by 20%
-box = ax1.get_position()
-ax1.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+## Shrink current axis by 20%
+#box = ax1.get_position()
+#ax1.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 
 # Put a legend to the right of the current axis
-ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+ax1.legend(loc='upper right')
 plt.savefig(str(path / 'FP-TP_plot.png'))
 plt.show()
